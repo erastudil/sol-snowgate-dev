@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>sol.snowgate.dev | Jupiter SOL-PERP 4H Signal Watch</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #070b12;
+      color: #e2e8f0;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(51, 65, 85, 0.75);
+      border-radius: 0.75rem;
+      box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.45);
+    }
+    .pulse-green {
+      animation: pulseGreen 1.8s infinite;
+    }
+    .pulse-amber {
+      animation: pulseAmber 2s infinite;
+    }
+    @keyframes pulseGreen {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+      50% { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+    }
+    @keyframes pulseAmber {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
+      50% { box-shadow: 0 0 0 7px rgba(245, 158, 11, 0); }
+    }
+    input[type="range"] {
+      accent-color: #38bdf8;
+    }
+    /* Custom thin scrollbar for internal mini-tables only */
+    .thin-scroll::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .thin-scroll::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .thin-scroll::-webkit-scrollbar-thumb {
+      background: rgba(71, 85, 105, 0.8);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="w-screen lg:h-screen lg:overflow-hidden flex flex-col select-none antialiased">
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-1.5 max-w-sm pointer-events-none"></div>
+
+  <!-- Top Compact Persistent Command Bar (Row 0: Fixed 48px on Desktop) -->
+  <header class="shrink-0 border-b border-slate-800/90 bg-slate-950/95 px-3 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2">
+    <div class="flex items-center gap-2.5">
+      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500/25 to-sky-500/25 border border-emerald-500/50 flex items-center justify-center text-emerald-400 font-extrabold mono text-xs">
+        4H
+      </div>
+      <div class="flex items-center gap-2">
+        <h1 class="text-sm font-bold tracking-tight text-white">sol.snowgate.dev</h1>
+        <span class="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 mono">Jupiter 10x Perp Radar</span>
+      </div>
+    </div>
+
+    <!-- Center Preset Test Strip (1-Click Radar Verification) -->
+    <div class="flex flex-wrap items-center gap-1">
+      <span class="text-[10px] uppercase tracking-wider text-slate-400 mr-1 hidden xl:inline">Test States:</span>
+      <button id="presetLive" type="button" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/40 hover:bg-sky-500/30 transition">📡 Live Market</button>
+      <button id="presetF6Watch" type="button" class="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition">🟡 Within 1% Watch (F6_07)</button>
+      <button id="presetF6ActiveLong" type="button" class="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition">🟢 Active Long Now (F6_07 Spring)</button>
+      <button id="presetF6ActiveShort" type="button" class="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-500/15 text-rose-300 border border-rose-500/30 hover:bg-rose-500/25 transition">🔴 Active Short Now (F6_07 Upthrust)</button>
+      <button id="presetF8Watch" type="button" class="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition">🟡 Within 1% Watch (F8_05)</button>
+      <button id="presetF8ActiveLong" type="button" class="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition">🟢 Active Long Now (F8_05 Flush)</button>
+    </div>
+
+    <!-- Right Feed & Audio Controls -->
+    <div class="flex flex-wrap items-center gap-1.5">
+      <div class="flex items-center gap-1 bg-slate-900 border border-slate-700/80 rounded-md px-2 py-1 text-[11px]">
+        <span id="feedDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <select id="dataSourceSelect" class="bg-transparent text-slate-200 font-medium focus:outline-none cursor-pointer">
+          <option value="auto">Auto Live Feed</option>
+          <option value="kraken">Kraken 4H</option>
+          <option value="binance">Binance 4H</option>
+          <option value="coingecko">Jupiter + CG</option>
+          <option value="embedded">5Y Baseline</option>
+        </select>
+      </div>
+
+      <div class="flex items-center gap-1 bg-slate-900 border border-slate-700/80 rounded-md px-2 py-1 text-[11px]">
+        <span class="text-slate-400">Watch:</span>
+        <select id="watchThresholdSelect" class="bg-transparent text-amber-300 font-semibold mono focus:outline-none cursor-pointer">
+          <option value="0.5">±0.5%</option>
+          <option value="1.0" selected>±1.0%</option>
+          <option value="1.5">±1.5%</option>
+          <option value="2.0">±2.0%</option>
+          <option value="3.0">±3.0%</option>
+        </select>
+      </div>
+
+      <button id="btnRefreshFeed" type="button" class="px-2 py-1 rounded-md bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-300 text-[11px] font-semibold transition flex items-center gap-1">
+        <span>↻</span><span>Sync Now</span>
+      </button>
+
+      <button id="btnAudioToggle" type="button" class="px-2.5 py-1 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 text-[11px] font-semibold transition flex items-center gap-1">
+        <span id="audioIcon">🔇</span><span id="audioLabel">Audio Alerts Off</span>
+      </button>
+
+      <button id="btnTestAudio" type="button" class="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[11px] font-medium transition" title="Test Alert Chime">
+        🔔 Chime
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Single-Viewport No-Scroll Workspace -->
+  <main class="flex-1 min-h-0 flex flex-col gap-2.5 p-2.5 sm:p-3 max-w-[1920px] w-full mx-auto">
+
+    <!-- Top Strip: 4H Close Countdown + Master Notification Banner (Compact Fixed Height) -->
+    <div class="shrink-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5">
+
+      <!-- 4H Candle Close Countdown Strip (4 cols) -->
+      <div class="lg:col-span-4 glass-card px-3.5 py-2.5 flex flex-col justify-between">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-sky-400">Next 4H Candle Close</span>
+              <span id="closingSoonBadge" class="hidden px-1.5 py-0.2 text-[9px] font-bold uppercase rounded bg-amber-500/25 text-amber-300 border border-amber-500/40">CLOSING SOON</span>
+            </div>
+            <div class="text-2xl sm:text-3xl font-extrabold mono tracking-tight text-white leading-none mt-0.5" id="countdownTimer">00:00:00</div>
+          </div>
+
+          <div class="text-right">
+            <span class="text-[10px] uppercase tracking-wider text-slate-400 block">SOL-PERP Live</span>
+            <span id="liveSolPriceDisplay" class="text-xl sm:text-2xl font-bold mono text-emerald-400 leading-none">$94.46</span>
+            <span id="liveCandleChangeDisplay" class="block text-[11px] mono text-slate-400 mt-0.5">+0.19% this 4H</span>
+          </div>
+        </div>
+
+        <div class="mt-2">
+          <div class="flex justify-between text-[10px] text-slate-400 mb-1 mono">
+            <span id="currentBarOpenTime">Open: 20:00 UTC</span>
+            <span id="candleElapsedPct">63.4% elapsed</span>
+            <span id="nextBarCloseTime">Closes: 00:00 UTC</span>
+          </div>
+          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div id="candleProgressBar" class="h-full bg-gradient-to-r from-sky-500 to-emerald-400 rounded-full transition-all duration-500" style="width: 63%;"></div>
+          </div>
+          <div class="flex items-center justify-between text-[10px] text-slate-400 mt-1 truncate">
+            <span id="localCloseTimeDisplay">Local Close: --:--</span>
+            <span id="lastSyncStatus" class="mono text-sky-300/90">Live Polling Ready</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Master Trade Notification Radar Strip (8 cols) -->
+      <div id="masterRadarCard" class="lg:col-span-8 glass-card px-4 py-2.5 flex items-center justify-between gap-3 transition-all duration-300">
+        <div class="flex items-center gap-3 min-w-0">
+          <div id="masterStatusOrb" class="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-xl font-bold bg-slate-800 border border-slate-600 text-slate-300">
+            ⚪
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Trade Notification Radar</span>
+              <span id="simModeTag" class="px-1.5 py-0.2 text-[10px] font-semibold uppercase rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">Live Feed Mode</span>
+            </div>
+            <h2 id="masterRadarHeadline" class="text-base sm:text-lg font-bold text-white truncate">STANDBY — Monitoring 4H Close Boundaries</h2>
+            <p id="masterRadarSubtext" class="text-xs text-slate-300 line-clamp-1">Neither strategy would signal if the candle closed right now. Nearest watch boundary is shown on the right.</p>
+          </div>
+        </div>
+
+        <div class="shrink-0 text-right bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-1.5">
+          <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Nearest Trigger Level</span>
+          <span id="nearestTriggerPrice" class="text-base sm:text-lg font-bold mono text-amber-300">$92.05</span>
+          <span id="nearestTriggerDist" class="block text-[11px] mono text-slate-400">2.56% away</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main 3-Column Bento Grid (Fills Remaining Screen Height with Zero Page Scroll) -->
+    <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5">
+
+      <!-- COLUMN 1 (4 cols): Strategy #1 — F6_07 Wyckoff Spring / SFP Liquidity Sweep -->
+      <section id="cardF6" class="lg:col-span-4 glass-card p-3.5 flex flex-col justify-between min-h-0 transition-all duration-300">
+        <div class="flex flex-col min-h-0 space-y-2.5">
+          <div class="flex items-start justify-between gap-2 pb-2 border-b border-slate-800">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 text-[10px] font-bold mono rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">STRATEGY #1</span>
+                <span class="text-[11px] text-slate-400 mono">506 Tr (8.4/mo) • 54.9% WR • $4,684</span>
+              </div>
+              <h3 class="text-sm sm:text-base font-bold text-white mt-0.5">F6_07: Wyckoff Spring / SFP Sweep</h3>
+            </div>
+            <div id="badgeF6" class="px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700 mono shrink-0">
+              ⚪ STANDBY
+            </div>
+          </div>
+
+          <!-- Dual Trigger Boxes (Long Spring & Short Upthrust) -->
+          <div class="grid grid-cols-2 gap-2">
+            <div id="f6LongBox" class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800">
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="font-bold text-emerald-400">Bullish Spring (L)</span>
+                <span id="f6LongStatusPill" class="px-1.5 py-0.2 text-[9px] mono rounded bg-slate-800 text-slate-400">Standby</span>
+              </div>
+              <div class="mt-1.5 flex items-baseline justify-between">
+                <div>
+                  <span class="text-[10px] text-slate-400 block">20B Floor (L20)</span>
+                  <span id="f6L20Val" class="text-sm font-bold mono text-white">$92.05</span>
+                </div>
+                <div class="text-right">
+                  <span class="text-[10px] text-slate-400 block">Req Close</span>
+                  <span id="f6LongReqClose" class="text-sm font-bold mono text-emerald-300">&gt; $93.19</span>
+                </div>
+              </div>
+              <div class="mt-1.5 pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[10px] mono">
+                <span class="text-slate-400">Dist:</span>
+                <span id="f6LongDistText" class="font-semibold text-slate-200">2.56% ($2.42)</span>
+              </div>
+            </div>
+
+            <div id="f6ShortBox" class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800">
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="font-bold text-rose-400">Upthrust (S)</span>
+                <span id="f6ShortStatusPill" class="px-1.5 py-0.2 text-[9px] mono rounded bg-slate-800 text-slate-400">Standby</span>
+              </div>
+              <div class="mt-1.5 flex items-baseline justify-between">
+                <div>
+                  <span class="text-[10px] text-slate-400 block">20B High (H20)</span>
+                  <span id="f6H20Val" class="text-sm font-bold mono text-white">$109.99</span>
+                </div>
+                <div class="text-right">
+                  <span class="text-[10px] text-slate-400 block">Req Close</span>
+                  <span id="f6ShortReqClose" class="text-sm font-bold mono text-rose-300">&lt; $103.42</span>
+                </div>
+              </div>
+              <div class="mt-1.5 pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[10px] mono">
+                <span class="text-slate-400">Dist:</span>
+                <span id="f6ShortDistText" class="font-semibold text-slate-200">16.44% ($15.53)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3 Rule Check Rows -->
+          <div class="space-y-1.5 text-[11px]">
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/70 border border-slate-800/90">
+              <div class="flex items-center gap-2 min-w-0">
+                <span id="f6Rule1Icon" class="w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[10px] bg-slate-800 text-slate-400 font-bold">1</span>
+                <div class="min-w-0">
+                  <span class="font-medium text-slate-200 block truncate">Intrabar Stop Sweep (Low &lt; L20 or High &gt; H20)</span>
+                  <span id="f6Rule1Sub" class="text-[10px] text-slate-400 mono block truncate">Low $93.58 vs $92.05 | High $94.91 vs $109.99</span>
+                </div>
+              </div>
+              <span id="f6Rule1Badge" class="mono font-semibold text-slate-400 shrink-0 ml-2">Not Swept</span>
+            </div>
+
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/70 border border-slate-800/90">
+              <div class="flex items-center gap-2 min-w-0">
+                <span id="f6Rule2Icon" class="w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[10px] bg-slate-800 text-slate-400 font-bold">2</span>
+                <div class="min-w-0">
+                  <span class="font-medium text-slate-200 block truncate">Range Boundary Reclaim Before 4H Close</span>
+                  <span id="f6Rule2Sub" class="text-[10px] text-slate-400 mono block truncate">Close $94.46 inside [$92.05, $109.99]</span>
+                </div>
+              </div>
+              <span id="f6Rule2Badge" class="mono font-semibold text-emerald-400 shrink-0 ml-2">Reclaimed</span>
+            </div>
+
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-900/70 border border-slate-800/90">
+              <div class="flex items-center gap-2 min-w-0">
+                <span id="f6Rule3Icon" class="w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[10px] bg-slate-800 text-slate-400 font-bold">3</span>
+                <div class="min-w-0">
+                  <span class="font-medium text-slate-200 block truncate">Rejection Wick &gt; 40.0% of Total 4H Range</span>
+                  <span id="f6Rule3Sub" class="text-[10px] text-slate-400 mono block truncate">Lower: 53.3% | Upper: 33.4% (Req &gt; 40%)</span>
+                </div>
+              </div>
+              <span id="f6Rule3Badge" class="mono font-semibold text-emerald-400 shrink-0 ml-2">53.3% (Pass)</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="f6ActionFooter" class="mt-2 p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-300 leading-snug">
+          <span id="f6FooterText">To signal LONG at next close: price must dip below <b>$92.05</b> intrabar, then close above <b>$93.19</b> (&gt;40% wick).</span>
+        </div>
+      </section>
+
+      <!-- COLUMN 2 (4 cols): Strategy #2 — F8_05 STH-SOPR Capitulation Flush -->
+      <section id="cardF8" class="lg:col-span-4 glass-card p-3.5 flex flex-col justify-between min-h-0 transition-all duration-300">
+        <div class="flex flex-col min-h-0 space-y-2.5">
+          <div class="flex items-start justify-between gap-2 pb-2 border-b border-slate-800">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 text-[10px] font-bold mono rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">STRATEGY #2</span>
+                <span class="text-[11px] text-slate-400 mono">80 Tr (1.3/mo) • 68.8% WR • $2,640</span>
+              </div>
+              <h3 class="text-sm sm:text-base font-bold text-white mt-0.5">F8_05: STH-SOPR Capitulation Flush</h3>
+            </div>
+            <div id="badgeF8" class="px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700 mono shrink-0">
+              ⚪ STANDBY
+            </div>
+          </div>
+
+          <!-- 3 Compact Metric Pills -->
+          <div class="grid grid-cols-3 gap-2">
+            <div class="p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+              <span class="text-[10px] text-slate-400 block truncate">0.93×SMA50 Cap</span>
+              <span id="f8CapCeiling" class="text-xs sm:text-sm font-bold mono text-white">&lt; $92.94</span>
+              <span id="f8SmaSub" class="text-[9px] text-slate-400 mono block truncate">SMA50: $99.97</span>
+            </div>
+            <div class="p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+              <span class="text-[10px] text-slate-400 block truncate">RSI(14) &lt; 32 Lvl</span>
+              <span id="f8RsiPrice" class="text-xs sm:text-sm font-bold mono text-amber-300">&lt; $91.18</span>
+              <span id="f8RsiSub" class="text-[9px] text-slate-400 mono block truncate">Now: 40.4</span>
+            </div>
+            <div class="p-2 rounded-lg bg-slate-900/90 border border-slate-800">
+              <span class="text-[10px] text-slate-400 block truncate">Signal Close Zone</span>
+              <span id="f8ValidWindow" class="text-xs sm:text-sm font-bold mono text-emerald-300">$89.4–$91.2</span>
+              <span id="f8DistSub" class="text-[9px] text-slate-400 mono block truncate">Dist: 1.61%</span>
+            </div>
+          </div>
+
+          <!-- 4 Rule Check Rows -->
+          <div class="space-y-1.5 text-[11px]">
+            <div class="flex items-center justify-between p-1.5 px-2 rounded-lg bg-slate-900/70 border border-slate-800/90">
+              <div class="flex items-center gap-2 min-w-0">
+                <span id="f8Rule1Icon" class="w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[10px] bg-slate-800 text-slate-400 font-bold">1</span>
+                <div class="min-w-0">
+                  <span class="font-medium text-slate-200 block truncate">Price &gt;7% Below 50-Bar SMA</span>
+                  <span id="f8Rule1Sub" class="text-[10px] text-slate-400 mono block truncate">Close $94.46 vs 0.93×SMA50 ($92.97)</span>
+                </div>
+              </div>
+              <span id="f8Rule1Badge" class="mono font-semibold text-slate-400 shrink-0 ml-2">-5.51%</span>
+            </div>
+
+            <div class="flex items-center justify-between p-1.5 px-2 rounded-lg bg-slate-900/70 border border-slate-800/90">
+              <div class="flex items-center gap-2 min-w-0">
+                <span id="f8Rule2Icon" class="w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[10px] bg-slate-800 text-slate-400 font-bold">2</span>
+                <div class="min-w-0">
+                  <span class="font-medium text-slate-200 block truncate">4-Hour Wilder RSI(14) &lt; 32.0</span>
+                  <span id="f8Rule2Sub" class="text-[10px] text-slate-400 mono block truncate">RSI: 40.44 (Triggers &lt; $91.18)</span>
+                </div>
+              </div>
+              <span id="f8Rule2Badge" class="mono font-semibold text-slate-400 shrink-0 ml-2">40.4 (Need &lt;32)</span>
+            </div>
+
+            <div class="flex items-center justify-between p-1.5 px-2 rounded-lg bg-slate-900/70 border border-slate-800/90">
+              <div class="flex items-center gap-2 min-w-0">
+                <span id="f8Rule3Icon" class="w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[10px] bg-slate-800 text-slate-400 font-bold">3</span>
+                <div class="min-w-0">
+                  <span class="font-medium text-slate-200 block truncate">4H Volume Spike &gt; 1.75× 20-Bar Avg</span>
+                  <span id="f8Rule3Sub" class="text-[10px] text-slate-400 mono block truncate">Vol $135M vs Req $1,481M</span>
+                </div>
+              </div>
+              <span id="f8Rule3Badge" class="mono font-semibold text-slate-400 shrink-0 ml-2">0.16×</span>
+            </div>
+
+            <div class="flex items-center justify-between p-1.5 px-2 rounded-lg bg-slate-900/70 border border-slate-800/90">
+              <div class="flex items-center gap-2 min-w-0">
+                <span id="f8Rule4Icon" class="w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[10px] bg-slate-800 text-slate-400 font-bold">4</span>
+                <div class="min-w-0">
+                  <span class="font-medium text-slate-200 block truncate">Lower Absorption Wick &gt; 25.0% of Range</span>
+                  <span id="f8Rule4Sub" class="text-[10px] text-slate-400 mono block truncate">Lower Wick: 53.3% (Req Close &gt; $93.91)</span>
+                </div>
+              </div>
+              <span id="f8Rule4Badge" class="mono font-semibold text-emerald-400 shrink-0 ml-2">53.3% (Pass)</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="f8ActionFooter" class="mt-2 p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-300 leading-snug">
+          <span id="f8FooterText">To signal LONG at next close: price must close between <b>$89.40</b> and <b>$91.18</b> on &gt;1.75× volume.</span>
+        </div>
+      </section>
+
+      <!-- COLUMN 3 (4 cols): Live 4H Candlestick Chart + Tabbed Control Dock (Simulator / 10x Ticket / 24 Signals) -->
+      <div class="lg:col-span-4 flex flex-col gap-2.5 min-h-0">
+
+        <!-- Upper Box: Live 4H Chart Canvas (Flexes to fit viewport) -->
+        <div class="glass-card p-3 flex-1 min-h-[190px] flex flex-col justify-between">
+          <div class="flex items-center justify-between gap-2 mb-1.5 shrink-0">
+            <span class="text-xs font-bold text-white">SOL-PERP 4H Chart &amp; Trigger Boundaries</span>
+            <div class="flex items-center gap-2 text-[10px] mono">
+              <span class="text-rose-300">■ H20</span>
+              <span class="text-sky-300">■ SMA50</span>
+              <span class="text-purple-300">■ 0.93×SMA</span>
+              <span class="text-emerald-300">■ L20</span>
+            </div>
+          </div>
+
+          <div class="relative flex-1 min-h-[135px] w-full bg-slate-950/85 rounded-lg border border-slate-800/90 overflow-hidden">
+            <canvas id="candleChartCanvas" class="w-full h-full block"></canvas>
+          </div>
+
+          <div class="mt-1.5 flex items-center justify-between text-[10px] text-slate-400 mono shrink-0 truncate">
+            <span id="chartFormingOhlc">O: $94.29 | H: $94.91 | L: $93.58 | C: $94.46</span>
+            <span id="chartRangeInfo">Range: $1.33 | VolAvg: $846M</span>
+          </div>
+        </div>
+
+        <!-- Lower Box: Tabbed Control Dock (Zero Page Scroll!) -->
+        <div class="glass-card p-3 shrink-0 flex flex-col justify-between">
+          <!-- Tab Navigation Header -->
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+            <div class="flex items-center gap-1">
+              <button id="tabBtnTicket" type="button" class="px-2.5 py-1 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">⚡ 10x Ticket</button>
+              <button id="tabBtnSim" type="button" class="px-2.5 py-1 rounded text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700">🎛 Candle Sim</button>
+              <button id="tabBtnHistory" type="button" class="px-2.5 py-1 rounded text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700">📜 24 Signals</button>
+            </div>
+            <button id="btnResetSliders" type="button" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-medium transition">Reset to Live</button>
+          </div>
+
+          <!-- TAB PANEL 1: Jupiter Perps 10x Execution Ticket (Default Visible) -->
+          <div id="panelTicket" class="space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-semibold text-slate-300">Account Equity (10% @ 10x):</span>
+              <div class="flex items-center gap-1">
+                <span class="text-slate-400 mono">$</span>
+                <input id="inputAccountEquity" type="number" min="100" max="10000000" step="100" value="1000" class="w-24 px-2 py-0.5 rounded bg-slate-950 border border-slate-700 text-right font-bold mono text-white text-xs focus:outline-none focus:border-sky-500" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-1.5 text-[11px] mono">
+              <div class="p-1.5 px-2 rounded bg-slate-950/90 border border-slate-800/80">
+                <span class="text-[9px] text-slate-400 block">Collateral (10% Eq)</span>
+                <span id="ticketMargin" class="font-bold text-white">$100.00</span>
+              </div>
+              <div class="p-1.5 px-2 rounded bg-slate-950/90 border border-slate-800/80">
+                <span class="text-[9px] text-slate-400 block">10x Notional Size</span>
+                <span id="ticketNotional" class="font-bold text-sky-300">$1,000.00 (10.59 SOL)</span>
+              </div>
+              <div class="p-1.5 px-2 rounded bg-slate-950/90 border border-slate-800/80">
+                <span class="text-[9px] text-slate-400 block">Fee + 4H JLP Borrow</span>
+                <span id="ticketFees" class="font-bold text-amber-300">$1.61 (16.12 bps)</span>
+              </div>
+              <div class="p-1.5 px-2 rounded bg-slate-950/90 border border-slate-800/80">
+                <span class="text-[9px] text-slate-400 block">10x Liquidation Price</span>
+                <span id="ticketLiqPrice" class="font-bold text-rose-300">$85.49 (Long)</span>
+              </div>
+            </div>
+
+            <button id="btnCopyTicket" type="button" class="w-full py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold transition">
+              📋 Copy Next-Close Jupiter Execution Parameters
+            </button>
+          </div>
+
+          <!-- TAB PANEL 2: Forming 4H Candle What-If Sliders -->
+          <div id="panelSim" class="hidden space-y-1.5 text-[11px]">
+            <div>
+              <div class="flex justify-between">
+                <label for="sliderClose" class="text-slate-300">Hypothetical Close ($)</label>
+                <span id="valSliderClose" class="mono font-bold text-sky-300">$94.46</span>
+              </div>
+              <input id="sliderClose" type="range" min="85.0" max="113.0" step="0.05" value="94.46" class="w-full h-1.5 cursor-pointer" />
+            </div>
+            <div>
+              <div class="flex justify-between">
+                <label for="sliderLow" class="text-slate-300">4H Intrabar Low ($)</label>
+                <span id="valSliderLow" class="mono font-bold text-emerald-300">$93.58</span>
+              </div>
+              <input id="sliderLow" type="range" min="84.0" max="105.0" step="0.05" value="93.58" class="w-full h-1.5 cursor-pointer" />
+            </div>
+            <div>
+              <div class="flex justify-between">
+                <label for="sliderHigh" class="text-slate-300">4H Intrabar High ($)</label>
+                <span id="valSliderHigh" class="mono font-bold text-rose-300">$94.91</span>
+              </div>
+              <input id="sliderHigh" type="range" min="90.0" max="115.0" step="0.05" value="94.91" class="w-full h-1.5 cursor-pointer" />
+            </div>
+            <div>
+              <div class="flex justify-between">
+                <label for="sliderVolMult" class="text-slate-300">4H Volume (× 20B Avg)</label>
+                <span id="valSliderVolMult" class="mono font-bold text-purple-300">0.16× ($135M)</span>
+              </div>
+              <input id="sliderVolMult" type="range" min="0.10" max="3.50" step="0.05" value="0.16" class="w-full h-1.5 cursor-pointer" />
+            </div>
+          </div>
+
+          <!-- TAB PANEL 3: Recent 24 Verified Signals Log (Compact Internal Scroll) -->
+          <div id="panelHistory" class="hidden space-y-1.5">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[10px] text-slate-400">Verified 5Y Signal Log:</span>
+              <div class="flex items-center gap-1">
+                <button id="filterAllSignals" type="button" class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/40">All Recent (24)</button>
+                <button id="filterF6Signals" type="button" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700">F6_07 Only</button>
+                <button id="filterF8Signals" type="button" class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700">F8_05 Only</button>
+              </div>
+            </div>
+            <div class="max-h-32 overflow-y-auto thin-scroll border border-slate-800 rounded">
+              <table class="w-full text-left border-collapse text-[10px]">
+                <thead class="sticky top-0 bg-slate-950 text-slate-400 uppercase">
+                  <tr>
+                    <th class="py-1 px-1.5">4H Close</th>
+                    <th class="py-1 px-1.5">Strat</th>
+                    <th class="py-1 px-1.5">Side</th>
+                    <th class="py-1 px-1.5 text-right">Entry</th>
+                    <th class="py-1 px-1.5 text-right">Exit</th>
+                    <th class="py-1 px-1.5 text-right">10x Net</th>
+                  </tr>
+                </thead>
+                <tbody id="signalsTableBody" class="divide-y divide-slate-800/60 mono"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    // =========================================================================
+    // 1. EMBEDDED VERIFIED 4H CANDLE HISTORY & BACKTEST SIGNALS
+    // =========================================================================
+    const BASELINE_CANDLES = [{"t": "2026-10-20T12:00:00Z", "o": 106.6971, "h": 107.2197, "l": 103.7186, "c": 105.3289, "v": 835744136.0}, {"t": "2026-10-20T16:00:00Z", "o": 105.3289, "h": 106.028, "l": 102.2782, "c": 104.7398, "v": 580927589.0}, {"t": "2026-10-20T20:00:00Z", "o": 104.7398, "h": 105.0964, "l": 101.4904, "c": 104.9292, "v": 207439447.0}, {"t": "2026-10-21T00:00:00Z", "o": 104.9292, "h": 106.4737, "l": 102.0689, "c": 104.6763, "v": 277088015.0}, {"t": "2026-10-21T04:00:00Z", "o": 104.6763, "h": 106.5262, "l": 104.2427, "c": 105.7695, "v": 418570243.0}, {"t": "2026-10-21T08:00:00Z", "o": 105.7695, "h": 106.1481, "l": 104.4969, "c": 105.8616, "v": 287725577.0}, {"t": "2026-10-21T12:00:00Z", "o": 105.8616, "h": 107.5091, "l": 104.4556, "c": 105.335, "v": 419492832.0}, {"t": "2026-10-21T16:00:00Z", "o": 105.335, "h": 111.5952, "l": 101.8358, "c": 107.0911, "v": 941444375.0}, {"t": "2026-10-21T20:00:00Z", "o": 107.0911, "h": 107.7299, "l": 103.8248, "c": 106.4222, "v": 289473581.0}, {"t": "2026-10-22T00:00:00Z", "o": 106.4222, "h": 108.4716, "l": 103.3584, "c": 107.946, "v": 837235053.0}, {"t": "2026-10-22T04:00:00Z", "o": 107.946, "h": 109.7179, "l": 107.228, "c": 108.4151, "v": 307603948.0}, {"t": "2026-10-22T08:00:00Z", "o": 108.4151, "h": 108.9725, "l": 103.6076, "c": 107.8844, "v": 402892898.0}, {"t": "2026-10-22T12:00:00Z", "o": 107.8844, "h": 108.687, "l": 106.2172, "c": 107.2979, "v": 733987620.0}, {"t": "2026-10-22T16:00:00Z", "o": 107.2979, "h": 108.4198, "l": 105.3801, "c": 105.8432, "v": 1033355166.0}, {"t": "2026-10-22T20:00:00Z", "o": 105.8432, "h": 108.3143, "l": 104.389, "c": 106.8042, "v": 386314135.0}, {"t": "2026-10-23T00:00:00Z", "o": 106.8042, "h": 109.2717, "l": 101.6123, "c": 102.9237, "v": 2167105617.0}, {"t": "2026-10-23T04:00:00Z", "o": 102.9237, "h": 107.9338, "l": 102.1112, "c": 105.1321, "v": 787121513.0}, {"t": "2026-10-23T08:00:00Z", "o": 105.1321, "h": 107.118, "l": 102.881, "c": 104.1276, "v": 464867005.0}, {"t": "2026-10-23T12:00:00Z", "o": 104.1276, "h": 106.9196, "l": 100.2103, "c": 101.5769, "v": 1349799177.0}, {"t": "2026-10-23T16:00:00Z", "o": 101.5769, "h": 106.7725, "l": 98.933, "c": 105.1213, "v": 2860056617.0}, {"t": "2026-10-23T20:00:00Z", "o": 105.1213, "h": 106.4286, "l": 103.048, "c": 103.5443, "v": 519371403.0}, {"t": "2026-10-24T00:00:00Z", "o": 103.5443, "h": 103.844, "l": 101.0237, "c": 103.7395, "v": 255971439.0}, {"t": "2026-10-24T04:00:00Z", "o": 103.7395, "h": 104.9826, "l": 101.2966, "c": 104.2157, "v": 155405045.0}, {"t": "2026-10-24T08:00:00Z", "o": 104.2157, "h": 104.9499, "l": 102.8143, "c": 103.306, "v": 281945173.0}, {"t": "2026-10-24T12:00:00Z", "o": 103.306, "h": 107.1714, "l": 102.8074, "c": 103.2812, "v": 274778443.0}, {"t": "2026-10-24T16:00:00Z", "o": 103.2812, "h": 104.7782, "l": 100.9216, "c": 102.2902, "v": 490688456.0}, {"t": "2026-10-24T20:00:00Z", "o": 102.2902, "h": 103.3302, "l": 99.4094, "c": 102.7767, "v": 132612645.0}, {"t": "2026-10-25T00:00:00Z", "o": 102.7767, "h": 104.4906, "l": 96.0056, "c": 99.0726, "v": 898650377.0}, {"t": "2026-10-25T04:00:00Z", "o": 99.0726, "h": 100.4101, "l": 98.433, "c": 99.0125, "v": 129570362.0}, {"t": "2026-10-25T08:00:00Z", "o": 99.0125, "h": 100.7163, "l": 96.4071, "c": 100.118, "v": 271498589.0}, {"t": "2026-10-25T12:00:00Z", "o": 100.118, "h": 100.8698, "l": 98.8102, "c": 99.8351, "v": 247542119.0}, {"t": "2026-10-25T16:00:00Z", "o": 99.8351, "h": 101.7926, "l": 99.1808, "c": 101.2567, "v": 524462609.0}, {"t": "2026-10-25T20:00:00Z", "o": 101.2567, "h": 102.7738, "l": 99.6271, "c": 102.2697, "v": 177437211.0}, {"t": "2026-10-26T00:00:00Z", "o": 102.2697, "h": 102.8812, "l": 100.7526, "c": 101.2195, "v": 619957123.0}, {"t": "2026-10-26T04:00:00Z", "o": 101.2195, "h": 102.9059, "l": 96.5447, "c": 98.1537, "v": 1488816849.0}, {"t": "2026-10-26T08:00:00Z", "o": 98.1537, "h": 104.4889, "l": 95.258, "c": 101.5326, "v": 2291744657.0}, {"t": "2026-10-26T12:00:00Z", "o": 101.5326, "h": 102.3118, "l": 99.5499, "c": 100.9703, "v": 484684179.0}, {"t": "2026-10-26T16:00:00Z", "o": 100.9703, "h": 103.8468, "l": 100.1237, "c": 102.3452, "v": 898768156.0}, {"t": "2026-10-26T20:00:00Z", "o": 102.3452, "h": 103.5675, "l": 98.976, "c": 101.2479, "v": 256277561.0}, {"t": "2026-10-27T00:00:00Z", "o": 101.2479, "h": 103.9152, "l": 98.9107, "c": 101.9084, "v": 479274457.0}, {"t": "2026-10-27T04:00:00Z", "o": 101.9084, "h": 104.239, "l": 100.6359, "c": 103.7525, "v": 1013270337.0}, {"t": "2026-10-27T08:00:00Z", "o": 103.7525, "h": 106.3943, "l": 103.2918, "c": 104.2626, "v": 391086291.0}, {"t": "2026-10-27T12:00:00Z", "o": 104.2626, "h": 105.4515, "l": 97.9224, "c": 101.4008, "v": 1987328973.0}, {"t": "2026-10-27T16:00:00Z", "o": 101.4008, "h": 101.9106, "l": 100.783, "c": 101.4448, "v": 333608440.0}, {"t": "2026-10-27T20:00:00Z", "o": 101.4448, "h": 102.0397, "l": 99.3138, "c": 100.7562, "v": 263185347.0}, {"t": "2026-10-28T00:00:00Z", "o": 100.7562, "h": 103.0241, "l": 98.778, "c": 102.4162, "v": 1309812630.0}, {"t": "2026-10-28T04:00:00Z", "o": 102.4162, "h": 105.5392, "l": 100.755, "c": 101.3925, "v": 536083311.0}, {"t": "2026-10-28T08:00:00Z", "o": 101.3925, "h": 103.8961, "l": 97.4186, "c": 99.1324, "v": 1035569324.0}, {"t": "2026-10-28T12:00:00Z", "o": 99.1324, "h": 102.142, "l": 97.4998, "c": 100.9784, "v": 1856099867.0}, {"t": "2026-10-28T16:00:00Z", "o": 100.9784, "h": 102.464, "l": 100.5066, "c": 101.6493, "v": 474400014.0}, {"t": "2026-10-28T20:00:00Z", "o": 101.6493, "h": 102.9779, "l": 100.6063, "c": 101.2519, "v": 260676616.0}, {"t": "2026-10-29T00:00:00Z", "o": 101.2519, "h": 103.7836, "l": 99.4368, "c": 102.268, "v": 623737310.0}, {"t": "2026-10-29T04:00:00Z", "o": 102.268, "h": 104.1804, "l": 101.4935, "c": 103.021, "v": 296345916.0}, {"t": "2026-10-29T08:00:00Z", "o": 103.021, "h": 103.4122, "l": 101.5007, "c": 102.5277, "v": 421602420.0}, {"t": "2026-10-29T12:00:00Z", "o": 102.5277, "h": 105.4965, "l": 102.007, "c": 103.6056, "v": 1096351925.0}, {"t": "2026-10-29T16:00:00Z", "o": 103.6056, "h": 105.0788, "l": 100.4047, "c": 101.4252, "v": 1704884771.0}, {"t": "2026-10-29T20:00:00Z", "o": 101.4252, "h": 102.5841, "l": 99.4379, "c": 102.3092, "v": 338839002.0}, {"t": "2026-10-30T00:00:00Z", "o": 102.3092, "h": 109.9891, "l": 100.7739, "c": 105.7925, "v": 1378915582.0}, {"t": "2026-10-30T04:00:00Z", "o": 105.7925, "h": 106.0329, "l": 103.8719, "c": 105.0727, "v": 542105533.0}, {"t": "2026-10-30T08:00:00Z", "o": 105.0727, "h": 106.2174, "l": 101.9602, "c": 103.0221, "v": 901380120.0}, {"t": "2026-10-30T12:00:00Z", "o": 103.0221, "h": 105.7143, "l": 93.767, "c": 97.9244, "v": 3823920428.0}, {"t": "2026-10-30T16:00:00Z", "o": 97.9244, "h": 100.0876, "l": 93.4823, "c": 95.3665, "v": 1768353801.0}, {"t": "2026-10-30T20:00:00Z", "o": 95.3665, "h": 96.9224, "l": 93.0636, "c": 95.487, "v": 207227180.0}, {"t": "2026-10-31T00:00:00Z", "o": 95.487, "h": 96.4742, "l": 94.1534, "c": 96.1886, "v": 389207546.0}, {"t": "2026-10-31T04:00:00Z", "o": 96.1886, "h": 96.521, "l": 95.3415, "c": 96.2039, "v": 129420629.0}, {"t": "2026-10-31T08:00:00Z", "o": 96.2039, "h": 97.894, "l": 95.0524, "c": 96.466, "v": 171897863.0}, {"t": "2026-10-31T12:00:00Z", "o": 96.466, "h": 96.9252, "l": 94.6189, "c": 95.7941, "v": 432073108.0}, {"t": "2026-10-31T16:00:00Z", "o": 95.7941, "h": 97.7546, "l": 94.9317, "c": 97.0523, "v": 514534906.0}, {"t": "2026-10-31T20:00:00Z", "o": 97.0523, "h": 99.1718, "l": 95.1905, "c": 96.2192, "v": 178219250.0}, {"t": "2026-11-01T00:00:00Z", "o": 96.2192, "h": 97.2605, "l": 96.0034, "c": 96.3519, "v": 203910420.0}, {"t": "2026-11-01T04:00:00Z", "o": 96.3519, "h": 99.3822, "l": 94.5285, "c": 98.3211, "v": 458287236.0}, {"t": "2026-11-01T08:00:00Z", "o": 98.3211, "h": 100.1454, "l": 92.7514, "c": 94.2424, "v": 1534063714.0}, {"t": "2026-11-01T12:00:00Z", "o": 94.2424, "h": 96.1856, "l": 92.1621, "c": 92.6491, "v": 516511516.0}, {"t": "2026-11-01T16:00:00Z", "o": 92.6491, "h": 96.4349, "l": 92.0452, "c": 94.2865, "v": 630604738.0}, {"t": "2026-11-01T20:00:00Z", "o": 94.2865, "h": 94.9066, "l": 93.5779, "c": 94.4621, "v": 135462500.0}];
+    const RECENT_SIGNALS = [{"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-10-30 20:00 UTC", "direction": "LONG", "entry_price": 95.49, "exit_price": 96.19, "trigger_ref": 93.48, "wick_pct": 59.7, "net_bps": 57.4, "acct_ret_pct": 0.57, "win": true}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-10-30 00:00 UTC", "direction": "SHORT", "entry_price": 105.79, "exit_price": 105.07, "trigger_ref": 106.39, "wick_pct": 45.5, "net_bps": 51.9, "acct_ret_pct": 0.52, "win": true}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-10-21 16:00 UTC", "direction": "SHORT", "entry_price": 107.09, "exit_price": 106.42, "trigger_ref": 110.73, "wick_pct": 46.2, "net_bps": 46.3, "acct_ret_pct": 0.46, "win": true}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-10-18 16:00 UTC", "direction": "LONG", "entry_price": 102.57, "exit_price": 103.31, "trigger_ref": 101.44, "wick_pct": 60.1, "net_bps": 56.0, "acct_ret_pct": 0.56, "win": true}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-10-11 04:00 UTC", "direction": "LONG", "entry_price": 105.23, "exit_price": 105.86, "trigger_ref": 104.48, "wick_pct": 41.7, "net_bps": 43.7, "acct_ret_pct": 0.44, "win": true}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-10-10 12:00 UTC", "direction": "LONG", "entry_price": 106.8, "exit_price": 108.34, "trigger_ref": 105.29, "wick_pct": 60.9, "net_bps": 127.7, "acct_ret_pct": 1.28, "win": true}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-10-10 08:00 UTC", "direction": "LONG", "entry_price": 107.35, "exit_price": 106.8, "trigger_ref": 106.25, "wick_pct": 65.7, "net_bps": -66.9, "acct_ret_pct": -0.67, "win": false}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-10-09 20:00 UTC", "direction": "LONG", "entry_price": 109.45, "exit_price": 109.71, "trigger_ref": 109.44, "wick_pct": 48.7, "net_bps": 7.2, "acct_ret_pct": 0.07, "win": true}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-10-09 16:00 UTC", "direction": "LONG", "entry_price": 111.44, "exit_price": 109.45, "trigger_ref": 110.76, "wick_pct": 41.2, "net_bps": -194.9, "acct_ret_pct": -1.95, "win": false}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-10-05 00:00 UTC", "direction": "SHORT", "entry_price": 120.71, "exit_price": 122.56, "trigger_ref": 122.98, "wick_pct": 50.0, "net_bps": -169.6, "acct_ret_pct": -1.7, "win": false}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-10-03 12:00 UTC", "direction": "LONG", "entry_price": 117.32, "exit_price": 112.21, "trigger_ref": 114.94, "wick_pct": 56.8, "net_bps": -451.5, "acct_ret_pct": -4.52, "win": false}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-09-28 16:00 UTC", "direction": "SHORT", "entry_price": 122.67, "exit_price": 119.69, "trigger_ref": 124.05, "wick_pct": 59.8, "net_bps": 227.0, "acct_ret_pct": 2.27, "win": true}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-09-23 08:00 UTC", "direction": "SHORT", "entry_price": 116.85, "exit_price": 111.36, "trigger_ref": 118.73, "wick_pct": 58.4, "net_bps": 453.5, "acct_ret_pct": 4.54, "win": true}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-09-23 04:00 UTC", "direction": "SHORT", "entry_price": 115.17, "exit_price": 116.85, "trigger_ref": 118.22, "wick_pct": 41.9, "net_bps": -162.5, "acct_ret_pct": -1.62, "win": false}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-09-22 08:00 UTC", "direction": "SHORT", "entry_price": 113.68, "exit_price": 111.34, "trigger_ref": 115.43, "wick_pct": 56.1, "net_bps": 190.0, "acct_ret_pct": 1.9, "win": true}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-09-19 16:00 UTC", "direction": "SHORT", "entry_price": 107.85, "exit_price": 106.92, "trigger_ref": 109.17, "wick_pct": 46.8, "net_bps": 70.3, "acct_ret_pct": 0.7, "win": true}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-09-19 12:00 UTC", "direction": "SHORT", "entry_price": 106.14, "exit_price": 107.85, "trigger_ref": 106.99, "wick_pct": 67.3, "net_bps": -178.0, "acct_ret_pct": -1.78, "win": false}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-09-17 20:00 UTC", "direction": "SHORT", "entry_price": 103.29, "exit_price": 102.99, "trigger_ref": 104.16, "wick_pct": 52.4, "net_bps": 12.9, "acct_ret_pct": 0.13, "win": true}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-09-17 00:00 UTC", "direction": "LONG", "entry_price": 98.73, "exit_price": 97.29, "trigger_ref": 97.01, "wick_pct": 77.1, "net_bps": -162.1, "acct_ret_pct": -1.62, "win": false}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-09-12 12:00 UTC", "direction": "LONG", "entry_price": 98.06, "exit_price": 97.06, "trigger_ref": 96.8, "wick_pct": 54.5, "net_bps": -117.6, "acct_ret_pct": -1.18, "win": false}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-09-11 00:00 UTC", "direction": "LONG", "entry_price": 102.21, "exit_price": 101.74, "trigger_ref": 100.24, "wick_pct": 78.7, "net_bps": -62.4, "acct_ret_pct": -0.62, "win": false}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-09-10 20:00 UTC", "direction": "LONG", "entry_price": 101.62, "exit_price": 102.21, "trigger_ref": 100.97, "wick_pct": 54.4, "net_bps": 41.9, "acct_ret_pct": 0.42, "win": true}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-08-30 04:00 UTC", "direction": "SHORT", "entry_price": 106.13, "exit_price": 106.64, "trigger_ref": 107.65, "wick_pct": 49.0, "net_bps": -64.2, "acct_ret_pct": -0.64, "win": false}, {"strategy": "F6_07 Wyckoff Spring/SFP", "code": "F6_07", "timestamp": "2026-08-29 12:00 UTC", "direction": "SHORT", "entry_price": 105.27, "exit_price": 104.37, "trigger_ref": 105.42, "wick_pct": 61.6, "net_bps": 69.9, "acct_ret_pct": 0.7, "win": true}];
+
+    const state = {
+      candles: JSON.parse(JSON.stringify(BASELINE_CANDLES)),
+      mode: 'live',
+      watchThresholdPct: 1.0,
+      audioEnabled: false,
+      audioCtx: null,
+      lastAlertStatus: 'STANDBY',
+      lastCloseMinuteAlerted: -1,
+      signalFilter: 'ALL',
+      accountEquity: 1000
+    };
+
+    // Restore saved settings if available
+    try {
+      const savedWatch = localStorage.getItem('snowgate_watch_pct');
+      if (savedWatch) state.watchThresholdPct = parseFloat(savedWatch) || 1.0;
+      const savedEq = localStorage.getItem('snowgate_equity');
+      if (savedEq) state.accountEquity = parseFloat(savedEq) || 1000;
+    } catch (e) {}
+
+    // =========================================================================
+    // 2. TOAST & PERSISTENT SYNTHESIZED WEB AUDIO ALERT ENGINE
+    // =========================================================================
+    function showToast(message, tone = 'info') {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      const toast = document.createElement('div');
+      const colors = {
+        info: 'bg-slate-900/95 border-sky-500/50 text-sky-200',
+        success: 'bg-slate-900/95 border-emerald-500/60 text-emerald-200',
+        warn: 'bg-slate-900/95 border-amber-500/60 text-amber-200'
+      };
+      toast.className = `pointer-events-auto px-3.5 py-2 rounded-xl border shadow-xl text-xs font-medium transition-all duration-300 ${colors[tone] || colors.info}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+
+    function ensureAudioContext() {
+      if (!state.audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) state.audioCtx = new AudioContextClass();
+      }
+      if (state.audioCtx && state.audioCtx.state === 'suspended') {
+        state.audioCtx.resume();
+      }
+      return state.audioCtx;
+    }
+
+    function playAlertChime(kind = 'watch', forcePlay = false) {
+      if (!state.audioEnabled && !forcePlay) return;
+      try {
+        const ctx = ensureAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        if (kind === 'active') {
+          // Urgent 3-note ascending harmonic chime (D5 -> F#5 -> A5)
+          const notes = [587.33, 739.99, 880.00];
+          notes.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.11);
+            gain.gain.setValueAtTime(0.16, now + idx * 0.11);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.11 + 0.32);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + idx * 0.11);
+            osc.stop(now + idx * 0.11 + 0.32);
+          });
+        } else {
+          // Crisp two-tone proximity radar ping (C5 -> G5)
+          const notes = [523.25, 783.99];
+          notes.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.10);
+            gain.gain.setValueAtTime(0.12, now + idx * 0.10);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.10 + 0.25);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + idx * 0.10);
+            osc.stop(now + idx * 0.10 + 0.25);
+          });
+        }
+      } catch (e) {}
+    }
+
+    // =========================================================================
+    // 3. 4-HOUR CANDLE CLOSE COUNTDOWN & DYNAMIC TAB TITLE TICKER
+    // =========================================================================
+    function updateCountdownClock() {
+      const now = new Date();
+      const fourHoursMs = 4 * 3600 * 1000;
+      const nowMs = now.getTime();
+      const currentBucketStartMs = Math.floor(nowMs / fourHoursMs) * fourHoursMs;
+      const nextBucketCloseMs = currentBucketStartMs + fourHoursMs;
+      const remainingMs = Math.max(0, nextBucketCloseMs - nowMs);
+      const elapsedPct = ((nowMs - currentBucketStartMs) / fourHoursMs) * 100.0;
+
+      const totalSec = Math.floor(remainingMs / 1000);
+      const hrs = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+      const secs = String(totalSec % 60).padStart(2, '0');
+      const cdStr = `${hrs}:${mins}:${secs}`;
+
+      const timerEl = document.getElementById('countdownTimer');
+      if (timerEl) timerEl.textContent = cdStr;
+
+      const badgeEl = document.getElementById('closingSoonBadge');
+      if (badgeEl) {
+        if (totalSec <= 900) {
+          badgeEl.classList.remove('hidden');
+          badgeEl.textContent = totalSec <= 300 ? 'FINAL 5M!' : 'CLOSING <15M';
+        } else {
+          badgeEl.classList.add('hidden');
+        }
+      }
+
+      // Repeat audio reminder once per minute during final 5 minutes if a signal is in WATCH or ACTIVE state
+      const currentMinBucket = Math.floor(totalSec / 60);
+      if (totalSec <= 300 && state.lastAlertStatus !== 'STANDBY' && state.lastCloseMinuteAlerted !== currentMinBucket) {
+        state.lastCloseMinuteAlerted = currentMinBucket;
+        playAlertChime(state.lastAlertStatus === 'ACTIVE' ? 'active' : 'watch');
+      }
+
+      const startUtc = new Date(currentBucketStartMs);
+      const nextUtc = new Date(nextBucketCloseMs);
+      const fmtUtc = (d) => `${String(d.getUTCHours()).padStart(2, '0')}:00 UTC`;
+
+      document.getElementById('currentBarOpenTime').textContent = `Open: ${fmtUtc(startUtc)}`;
+      document.getElementById('candleElapsedPct').textContent = `${elapsedPct.toFixed(1)}% elapsed`;
+      document.getElementById('nextBarCloseTime').textContent = `Closes: ${fmtUtc(nextUtc)}`;
+      document.getElementById('candleProgressBar').style.width = `${Math.min(100, Math.max(1, elapsedPct)).toFixed(1)}%`;
+      document.getElementById('localCloseTimeDisplay').textContent = `Local Close: ${nextUtc.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Hold 4H`;
+
+      // Update browser tab title so pinned tab acts as a live ticker
+      const curClose = state.candles[state.candles.length - 1].c;
+      const prefix = state.lastAlertStatus === 'ACTIVE' ? '🟢 SIGNAL NOW' : (state.lastAlertStatus === 'WATCH' ? '🟡 WATCH' : '⚪');
+      document.title = `${prefix} $${curClose.toFixed(2)} SOL (${cdStr}) | sol.snowgate.dev`;
+    }
+
+    // =========================================================================
+    // 4. INDICATOR & PROXIMITY WATCH ENGINE
+    // =========================================================================
+    function computeWilderRsiForClose(priorCloses, candidateClose) {
+      const series = [...priorCloses, candidateClose];
+      if (series.length < 15) return 50.0;
+      const deltas = [];
+      for (let i = 1; i < series.length; i++) deltas.push(series[i] - series[i - 1]);
+      let avgGain = 0, avgLoss = 0;
+      for (let i = 0; i < 14; i++) {
+        if (deltas[i] > 0) avgGain += deltas[i];
+        else avgLoss -= deltas[i];
+      }
+      avgGain /= 14.0;
+      avgLoss /= 14.0;
+      for (let i = 14; i < deltas.length; i++) {
+        const g = deltas[i] > 0 ? deltas[i] : 0.0;
+        const l = deltas[i] < 0 ? -deltas[i] : 0.0;
+        avgGain = (avgGain * 13.0 + g) / 14.0;
+        avgLoss = (avgLoss * 13.0 + l) / 14.0;
+      }
+      return 100.0 - (100.0 / (1.0 + (avgGain / (avgLoss + 1e-12))));
+    }
+
+    function findRsiThresholdPrice(priorCloses, targetRsi = 32.0) {
+      let lowP = priorCloses[priorCloses.length - 1] * 0.5;
+      let highP = priorCloses[priorCloses.length - 1] * 1.3;
+      for (let iter = 0; iter < 32; iter++) {
+        const mid = 0.5 * (lowP + highP);
+        if (computeWilderRsiForClose(priorCloses, mid) > targetRsi) highP = mid;
+        else lowP = mid;
+      }
+      return 0.5 * (lowP + highP);
+    }
+
+    function evaluateStrategies() {
+      const candles = state.candles;
+      const n = candles.length;
+      const current = candles[n - 1];
+      const prior20 = candles.slice(n - 21, n - 1);
+      const prior49Closes = candles.slice(n - 50, n - 1).map(x => x.c);
+      const allPriorCloses = candles.slice(0, n - 1).map(x => x.c);
+
+      const l20 = Math.min(...prior20.map(x => x.l));
+      const h20 = Math.max(...prior20.map(x => x.h));
+      const volSma20 = prior20.reduce((acc, x) => acc + x.v, 0) / prior20.length;
+
+      const O = current.o;
+      const H = Math.max(current.h, current.o, current.c);
+      const L = Math.min(current.l, current.o, current.c);
+      const C = current.c;
+      const V = current.v;
+      const rng = Math.max(H - L, 1e-6);
+
+      const lowerWick = Math.min(O, C) - L;
+      const upperWick = H - Math.max(O, C);
+      const lowerWickPct = (lowerWick / rng) * 100.0;
+      const upperWickPct = (upperWick / rng) * 100.0;
+
+      const sum49 = prior49Closes.reduce((a, b) => a + b, 0);
+      const sma50 = (sum49 + C) / 50.0;
+      const capSmaCeiling = 0.93 * sma50;
+      const exactSmaTriggerClose = (0.93 * sum49 / 50.0) / (1.0 - 0.93 / 50.0);
+
+      const rsi14 = computeWilderRsiForClose(allPriorCloses, C);
+      const rsi32Price = findRsiThresholdPrice(allPriorCloses, 32.0);
+      const volMult = V / (volSma20 + 1e-9);
+      const watchPct = state.watchThresholdPct;
+
+      // Strategy #1: F6_07
+      const f6SweptLow = L < l20;
+      const f6ReclaimedLow = C > l20;
+      const f6WickLongOk = lowerWickPct > 40.0;
+      const f6SignalLong = f6SweptLow && f6ReclaimedLow && f6WickLongOk;
+
+      const f6SweptHigh = H > h20;
+      const f6ReclaimedHigh = C < h20;
+      const f6WickShortOk = upperWickPct > 40.0;
+      const f6SignalShort = f6SweptHigh && f6ReclaimedHigh && f6WickShortOk;
+
+      const effLowForLong = Math.min(L, l20 - 0.01);
+      const f6LongReqClose = Math.max(l20 + 0.01, 0.60 * effLowForLong + 0.40 * H);
+      const effHighForShort = Math.max(H, h20 + 0.01);
+      const f6ShortReqClose = Math.min(h20 - 0.01, 0.60 * effHighForShort + 0.40 * L);
+
+      const distToL20Pct = ((C - l20) / C) * 100.0;
+      const distToH20Pct = ((h20 - C) / C) * 100.0;
+      const distToLongReclaimPct = f6SweptLow ? (Math.max(0, f6LongReqClose - C) / C) * 100.0 : Math.abs(distToL20Pct);
+      const distToShortReclaimPct = f6SweptHigh ? (Math.max(0, C - f6ShortReqClose) / C) * 100.0 : Math.abs(distToH20Pct);
+
+      let f6Status = 'STANDBY';
+      if (f6SignalLong) f6Status = 'ACTIVE_LONG';
+      else if (f6SignalShort) f6Status = 'ACTIVE_SHORT';
+      else if (distToLongReclaimPct <= watchPct || Math.abs(distToL20Pct) <= watchPct) f6Status = 'WATCH_LONG';
+      else if (distToShortReclaimPct <= watchPct || Math.abs(distToH20Pct) <= watchPct) f6Status = 'WATCH_SHORT';
+
+      // Strategy #2: F8_05
+      const f8CondSma = C < capSmaCeiling;
+      const f8CondRsi = rsi14 < 32.0;
+      const f8CondVol = volMult > 1.75;
+      const f8CondWick = lowerWickPct > 25.0;
+      const f8SignalLong = f8CondSma && f8CondRsi && f8CondVol && f8CondWick;
+
+      const f8MaxCloseCeiling = Math.min(exactSmaTriggerClose, rsi32Price);
+      const effCapLow = Math.min(L, f8MaxCloseCeiling * 0.985);
+      const f8MinCloseWick = 0.75 * effCapLow + 0.25 * H;
+
+      let f8DistPct = 0;
+      if (f8SignalLong) f8DistPct = 0.0;
+      else if (C > f8MaxCloseCeiling) f8DistPct = ((C - f8MaxCloseCeiling) / C) * 100.0;
+      else if (C <= f8MinCloseWick) f8DistPct = ((f8MinCloseWick - C) / C) * 100.0;
+      else f8DistPct = 0.35;
+
+      let f8Status = 'STANDBY';
+      if (f8SignalLong) f8Status = 'ACTIVE_LONG';
+      else if (f8DistPct <= watchPct || Math.abs(((C - exactSmaTriggerClose) / C) * 100.0) <= watchPct) f8Status = 'WATCH_LONG';
+
+      return {
+        O, H, L, C, V, rng,
+        l20, h20, sma50, capSmaCeiling, exactSmaTriggerClose,
+        rsi14, rsi32Price, volSma20, volMult,
+        lowerWickPct, upperWickPct,
+        f6: {
+          status: f6Status,
+          sweptLow: f6SweptLow, reclaimedLow: f6ReclaimedLow, wickLongOk: f6WickLongOk,
+          sweptHigh: f6SweptHigh, reclaimedHigh: f6ReclaimedHigh, wickShortOk: f6WickShortOk,
+          longReqClose: f6LongReqClose, shortReqClose: f6ShortReqClose,
+          distToL20Pct, distToH20Pct, distToLongReclaimPct, distToShortReclaimPct
+        },
+        f8: {
+          status: f8Status,
+          condSma: f8CondSma, condRsi: f8CondRsi, condVol: f8CondVol, condWick: f8CondWick,
+          maxCloseCeiling: f8MaxCloseCeiling, minCloseWick: f8MinCloseWick, distPct: f8DistPct
+        }
+      };
+    }
+
+    // =========================================================================
+    // 5. RENDER DASHBOARD UI & HIGH-DPI CHART
+    // =========================================================================
+    function renderDashboard() {
+      const m = evaluateStrategies();
+      const watchPct = state.watchThresholdPct;
+
+      const barRetPct = ((m.C - m.O) / m.O) * 100.0;
+      document.getElementById('liveSolPriceDisplay').textContent = `$${m.C.toFixed(2)}`;
+      const chgEl = document.getElementById('liveCandleChangeDisplay');
+      chgEl.textContent = `${barRetPct >= 0 ? '+' : ''}${barRetPct.toFixed(2)}% this 4H`;
+      chgEl.className = `block text-[11px] mono mt-0.5 ${barRetPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+      document.getElementById('simModeTag').textContent = state.mode === 'live' ? 'Live Feed Mode' : 'What-If Simulator';
+      document.getElementById('simModeTag').className = state.mode === 'live'
+        ? 'px-1.5 py-0.2 text-[10px] font-semibold uppercase rounded bg-sky-500/15 text-sky-300 border border-sky-500/30'
+        : 'px-1.5 py-0.2 text-[10px] font-semibold uppercase rounded bg-purple-500/20 text-purple-300 border border-purple-500/40';
+
+      // Strategy #1 Card
+      const cardF6 = document.getElementById('cardF6');
+      const badgeF6 = document.getElementById('badgeF6');
+      if (m.f6.status.startsWith('ACTIVE')) {
+        const isLong = m.f6.status === 'ACTIVE_LONG';
+        cardF6.className = `lg:col-span-4 glass-card p-3.5 flex flex-col justify-between min-h-0 transition-all duration-300 border-2 ${isLong ? 'border-emerald-500/85 pulse-green' : 'border-rose-500/85 pulse-green'}`;
+        badgeF6.className = `px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider mono shrink-0 ${isLong ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/50' : 'bg-rose-500/25 text-rose-300 border border-rose-500/50'}`;
+        badgeF6.textContent = isLong ? '🟢 SIGNAL LONG NOW' : '🔴 SIGNAL SHORT NOW';
+      } else if (m.f6.status.startsWith('WATCH')) {
+        cardF6.className = 'lg:col-span-4 glass-card p-3.5 flex flex-col justify-between min-h-0 transition-all duration-300 border-2 border-amber-500/85 pulse-amber';
+        badgeF6.className = 'px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider bg-amber-500/25 text-amber-300 border border-amber-500/50 mono shrink-0';
+        badgeF6.textContent = `🟡 WITHIN ${watchPct.toFixed(1)}% WATCH`;
+      } else {
+        cardF6.className = 'lg:col-span-4 glass-card p-3.5 flex flex-col justify-between min-h-0 transition-all duration-300';
+        badgeF6.className = 'px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700 mono shrink-0';
+        badgeF6.textContent = '⚪ STANDBY';
+      }
+
+      document.getElementById('f6L20Val').textContent = `$${m.l20.toFixed(2)}`;
+      document.getElementById('f6LongReqClose').textContent = `> $${m.f6.longReqClose.toFixed(2)}`;
+      document.getElementById('f6LongDistText').textContent = m.f6.status === 'ACTIVE_LONG' ? '0.00% (ACTIVE!)' : `${m.f6.distToLongReclaimPct.toFixed(2)}% ($${Math.abs(m.C - m.l20).toFixed(2)})`;
+      document.getElementById('f6LongStatusPill').textContent = m.f6.status === 'ACTIVE_LONG' ? 'ACTIVE' : (m.f6.status === 'WATCH_LONG' ? `WATCH` : 'Standby');
+      document.getElementById('f6LongStatusPill').className = m.f6.status === 'ACTIVE_LONG'
+        ? 'px-1.5 py-0.2 text-[9px] mono rounded bg-emerald-500/25 text-emerald-300 font-bold'
+        : (m.f6.status === 'WATCH_LONG' ? 'px-1.5 py-0.2 text-[9px] mono rounded bg-amber-500/25 text-amber-300 font-bold' : 'px-1.5 py-0.2 text-[9px] mono rounded bg-slate-800 text-slate-400');
+
+      document.getElementById('f6H20Val').textContent = `$${m.h20.toFixed(2)}`;
+      document.getElementById('f6ShortReqClose').textContent = `< $${m.f6.shortReqClose.toFixed(2)}`;
+      document.getElementById('f6ShortDistText').textContent = m.f6.status === 'ACTIVE_SHORT' ? '0.00% (ACTIVE!)' : `${m.f6.distToShortReclaimPct.toFixed(2)}% ($${Math.abs(m.h20 - m.C).toFixed(2)})`;
+      document.getElementById('f6ShortStatusPill').textContent = m.f6.status === 'ACTIVE_SHORT' ? 'ACTIVE' : (m.f6.status === 'WATCH_SHORT' ? `WATCH` : 'Standby');
+      document.getElementById('f6ShortStatusPill').className = m.f6.status === 'ACTIVE_SHORT'
+        ? 'px-1.5 py-0.2 text-[9px] mono rounded bg-rose-500/25 text-rose-300 font-bold'
+        : (m.f6.status === 'WATCH_SHORT' ? 'px-1.5 py-0.2 text-[9px] mono rounded bg-amber-500/25 text-amber-300 font-bold' : 'px-1.5 py-0.2 text-[9px] mono rounded bg-slate-800 text-slate-400');
+
+      const f6SweepAny = m.f6.sweptLow || m.f6.sweptHigh;
+      document.getElementById('f6Rule1Icon').textContent = f6SweepAny ? '✓' : '1';
+      document.getElementById('f6Rule1Icon').className = `w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${f6SweepAny ? 'bg-emerald-500/25 text-emerald-300' : 'bg-slate-800 text-slate-400'}`;
+      document.getElementById('f6Rule1Sub').textContent = `Low $${m.L.toFixed(2)} vs $${m.l20.toFixed(2)} | High $${m.H.toFixed(2)} vs $${m.h20.toFixed(2)}`;
+      document.getElementById('f6Rule1Badge').textContent = m.f6.sweptLow ? 'Swept L20' : (m.f6.sweptHigh ? 'Swept H20' : 'Not Swept');
+      document.getElementById('f6Rule1Badge').className = `mono font-semibold shrink-0 ml-2 ${f6SweepAny ? 'text-emerald-400' : 'text-slate-400'}`;
+
+      const f6InsideRange = m.C > m.l20 && m.C < m.h20;
+      document.getElementById('f6Rule2Icon').textContent = f6InsideRange ? '✓' : '2';
+      document.getElementById('f6Rule2Icon').className = `w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${f6InsideRange ? 'bg-emerald-500/25 text-emerald-300' : 'bg-amber-500/25 text-amber-300'}`;
+      document.getElementById('f6Rule2Sub').textContent = `Close $${m.C.toFixed(2)} vs [$${m.l20.toFixed(2)}, $${m.h20.toFixed(2)}]`;
+      document.getElementById('f6Rule2Badge').textContent = f6InsideRange ? 'Reclaimed' : 'Outside';
+      document.getElementById('f6Rule2Badge').className = `mono font-semibold shrink-0 ml-2 ${f6InsideRange ? 'text-emerald-400' : 'text-amber-400'}`;
+
+      const activeWickPct = m.f6.sweptHigh ? m.upperWickPct : m.lowerWickPct;
+      const wickPass = activeWickPct > 40.0;
+      document.getElementById('f6Rule3Icon').textContent = wickPass ? '✓' : '3';
+      document.getElementById('f6Rule3Icon').className = `w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${wickPass ? 'bg-emerald-500/25 text-emerald-300' : 'bg-slate-800 text-slate-400'}`;
+      document.getElementById('f6Rule3Sub').textContent = `Lower: ${m.lowerWickPct.toFixed(1)}% | Upper: ${m.upperWickPct.toFixed(1)}% (Req >40%)`;
+      document.getElementById('f6Rule3Badge').textContent = `${activeWickPct.toFixed(1)}% (${wickPass ? 'Pass' : '<40%'})`;
+      document.getElementById('f6Rule3Badge').className = `mono font-semibold shrink-0 ml-2 ${wickPass ? 'text-emerald-400' : 'text-slate-400'}`;
+
+      const f6Footer = document.getElementById('f6FooterText');
+      if (m.f6.status === 'ACTIVE_LONG') {
+        f6Footer.innerHTML = `<span class="text-emerald-300 font-bold">🟢 SIGNAL LONG NOW:</span> Swept L20 ($${m.l20.toFixed(2)}), reclaimed at $${m.C.toFixed(2)} (${m.lowerWickPct.toFixed(1)}% wick).`;
+      } else if (m.f6.status === 'ACTIVE_SHORT') {
+        f6Footer.innerHTML = `<span class="text-rose-300 font-bold">🔴 SIGNAL SHORT NOW:</span> Swept H20 ($${m.h20.toFixed(2)}), rejected at $${m.C.toFixed(2)} (${m.upperWickPct.toFixed(1)}% wick).`;
+      } else if (m.f6.status.startsWith('WATCH')) {
+        f6Footer.innerHTML = `<span class="text-amber-300 font-bold">🟡 WITHIN ${watchPct.toFixed(1)}% WATCH:</span> Price ($${m.C.toFixed(2)}) is near the 20-bar liquidity boundary!`;
+      } else {
+        f6Footer.innerHTML = `To signal LONG at next close: dip below <b>$${m.l20.toFixed(2)}</b> intrabar, then close above <b>$${m.f6.longReqClose.toFixed(2)}</b> (&gt;40% wick).`;
+      }
+
+      // Strategy #2 Card
+      const cardF8 = document.getElementById('cardF8');
+      const badgeF8 = document.getElementById('badgeF8');
+      if (m.f8.status === 'ACTIVE_LONG') {
+        cardF8.className = 'lg:col-span-4 glass-card p-3.5 flex flex-col justify-between min-h-0 transition-all duration-300 border-2 border-emerald-500/85 pulse-green';
+        badgeF8.className = 'px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider bg-emerald-500/25 text-emerald-300 border border-emerald-500/50 mono shrink-0';
+        badgeF8.textContent = '🟢 SIGNAL LONG NOW';
+      } else if (m.f8.status === 'WATCH_LONG') {
+        cardF8.className = 'lg:col-span-4 glass-card p-3.5 flex flex-col justify-between min-h-0 transition-all duration-300 border-2 border-amber-500/85 pulse-amber';
+        badgeF8.className = 'px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider bg-amber-500/25 text-amber-300 border border-amber-500/50 mono shrink-0';
+        badgeF8.textContent = `🟡 WITHIN ${watchPct.toFixed(1)}% WATCH`;
+      } else {
+        cardF8.className = 'lg:col-span-4 glass-card p-3.5 flex flex-col justify-between min-h-0 transition-all duration-300';
+        badgeF8.className = 'px-2.5 py-1 rounded-md font-bold text-[11px] uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700 mono shrink-0';
+        badgeF8.textContent = '⚪ STANDBY';
+      }
+
+      document.getElementById('f8CapCeiling').textContent = `< $${m.exactSmaTriggerClose.toFixed(2)}`;
+      document.getElementById('f8SmaSub').textContent = `SMA50: $${m.sma50.toFixed(2)}`;
+      document.getElementById('f8RsiPrice').textContent = `< $${m.rsi32Price.toFixed(2)}`;
+      document.getElementById('f8RsiSub').textContent = `RSI(14): ${m.rsi14.toFixed(1)}`;
+      document.getElementById('f8ValidWindow').textContent = `$${m.f8.minCloseWick.toFixed(1)}–$${m.f8.maxCloseCeiling.toFixed(1)}`;
+      document.getElementById('f8DistSub').textContent = m.f8.status === 'ACTIVE_LONG' ? '0.00% (ACTIVE!)' : `Dist: ${m.f8.distPct.toFixed(2)}%`;
+
+      const smaStretchPct = ((m.C - m.sma50) / m.sma50) * 100.0;
+      document.getElementById('f8Rule1Icon').textContent = m.f8.condSma ? '✓' : '1';
+      document.getElementById('f8Rule1Icon').className = `w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${m.f8.condSma ? 'bg-emerald-500/25 text-emerald-300' : 'bg-slate-800 text-slate-400'}`;
+      document.getElementById('f8Rule1Sub').textContent = `Close $${m.C.toFixed(2)} vs 0.93×SMA50 ($${m.capSmaCeiling.toFixed(2)})`;
+      document.getElementById('f8Rule1Badge').textContent = `${smaStretchPct.toFixed(2)}%`;
+      document.getElementById('f8Rule1Badge').className = `mono font-semibold shrink-0 ml-2 ${m.f8.condSma ? 'text-emerald-400' : 'text-slate-400'}`;
+
+      document.getElementById('f8Rule2Icon').textContent = m.f8.condRsi ? '✓' : '2';
+      document.getElementById('f8Rule2Icon').className = `w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${m.f8.condRsi ? 'bg-emerald-500/25 text-emerald-300' : 'bg-slate-800 text-slate-400'}`;
+      document.getElementById('f8Rule2Sub').textContent = `RSI: ${m.rsi14.toFixed(2)} (Triggers < $${m.rsi32Price.toFixed(2)})`;
+      document.getElementById('f8Rule2Badge').textContent = `${m.rsi14.toFixed(1)} (${m.f8.condRsi ? 'Pass' : '<32'})`;
+      document.getElementById('f8Rule2Badge').className = `mono font-semibold shrink-0 ml-2 ${m.f8.condRsi ? 'text-emerald-400' : 'text-slate-400'}`;
+
+      const reqVolUsd = 1.75 * m.volSma20;
+      document.getElementById('f8Rule3Icon').textContent = m.f8.condVol ? '✓' : '3';
+      document.getElementById('f8Rule3Icon').className = `w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${m.f8.condVol ? 'bg-emerald-500/25 text-emerald-300' : 'bg-slate-800 text-slate-400'}`;
+      document.getElementById('f8Rule3Sub').textContent = `Vol $${(m.V / 1e6).toFixed(0)}M vs Req $${(reqVolUsd / 1e6).toFixed(0)}M`;
+      document.getElementById('f8Rule3Badge').textContent = `${m.volMult.toFixed(2)}×`;
+      document.getElementById('f8Rule3Badge').className = `mono font-semibold shrink-0 ml-2 ${m.f8.condVol ? 'text-emerald-400' : 'text-slate-400'}`;
+
+      const reqWickCloseF8 = 0.75 * m.L + 0.25 * m.H;
+      document.getElementById('f8Rule4Icon').textContent = m.f8.condWick ? '✓' : '4';
+      document.getElementById('f8Rule4Icon').className = `w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${m.f8.condWick ? 'bg-emerald-500/25 text-emerald-300' : 'bg-slate-800 text-slate-400'}`;
+      document.getElementById('f8Rule4Sub').textContent = `Lower Wick: ${m.lowerWickPct.toFixed(1)}% (Req Close > $${reqWickCloseF8.toFixed(2)})`;
+      document.getElementById('f8Rule4Badge').textContent = `${m.lowerWickPct.toFixed(1)}%`;
+      document.getElementById('f8Rule4Badge').className = `mono font-semibold shrink-0 ml-2 ${m.f8.condWick ? 'text-emerald-400' : 'text-slate-400'}`;
+
+      const f8Footer = document.getElementById('f8FooterText');
+      if (m.f8.status === 'ACTIVE_LONG') {
+        f8Footer.innerHTML = `<span class="text-emerald-300 font-bold">🟢 SIGNAL LONG NOW:</span> Capitulation flush active (Close $${m.C.toFixed(2)}, RSI ${m.rsi14.toFixed(1)}, Vol ${m.volMult.toFixed(2)}×).`;
+      } else if (m.f8.status === 'WATCH_LONG') {
+        f8Footer.innerHTML = `<span class="text-amber-300 font-bold">🟡 WITHIN ${watchPct.toFixed(1)}% WATCH:</span> Price ($${m.C.toFixed(2)}) is approaching the STH-SOPR capitulation zone!`;
+      } else {
+        f8Footer.innerHTML = `To signal LONG at next close: close between <b>$${m.f8.minCloseWick.toFixed(2)}</b> and <b>$${m.f8.maxCloseCeiling.toFixed(2)}</b> on &gt;1.75× volume.`;
+      }
+
+      // Master Radar Banner
+      const radarCard = document.getElementById('masterRadarCard');
+      const radarOrb = document.getElementById('masterStatusOrb');
+      const radarHeadline = document.getElementById('masterRadarHeadline');
+      const radarSub = document.getElementById('masterRadarSubtext');
+      const nearestPriceEl = document.getElementById('nearestTriggerPrice');
+      const nearestDistEl = document.getElementById('nearestTriggerDist');
+
+      const candidates = [
+        { label: 'F6_07 L20 Floor', price: m.l20, distPct: Math.abs(((m.C - m.l20) / m.C) * 100.0) },
+        { label: 'F8_05 0.93×SMA50', price: m.exactSmaTriggerClose, distPct: Math.abs(((m.C - m.exactSmaTriggerClose) / m.C) * 100.0) },
+        { label: 'F6_07 H20 Ceiling', price: m.h20, distPct: Math.abs(((m.h20 - m.C) / m.C) * 100.0) }
+      ];
+      candidates.sort((a, b) => a.distPct - b.distPct);
+      const nearest = candidates[0];
+      nearestPriceEl.textContent = `$${nearest.price.toFixed(2)}`;
+      nearestDistEl.textContent = `${nearest.distPct.toFixed(2)}% (${nearest.label})`;
+
+      const anyActive = m.f6.status.startsWith('ACTIVE') || m.f8.status.startsWith('ACTIVE');
+      const anyWatch = m.f6.status.startsWith('WATCH') || m.f8.status.startsWith('WATCH');
+
+      let currentOverallState = 'STANDBY';
+      if (anyActive) {
+        currentOverallState = 'ACTIVE';
+        const activeStratNames = [];
+        let activeSide = 'LONG';
+        if (m.f6.status === 'ACTIVE_LONG') activeStratNames.push('F6_07 Wyckoff Spring (LONG)');
+        if (m.f6.status === 'ACTIVE_SHORT') {
+          activeStratNames.push('F6_07 Upthrust (SHORT)');
+          activeSide = 'SHORT';
+        }
+        if (m.f8.status === 'ACTIVE_LONG') activeStratNames.push('F8_05 Capitulation (LONG)');
+
+        radarCard.className = 'lg:col-span-8 glass-card px-4 py-2.5 flex items-center justify-between gap-3 transition-all duration-300 border-2 border-emerald-500/90 pulse-green';
+        radarOrb.className = 'w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-xl font-bold bg-emerald-500/25 border border-emerald-400 text-emerald-300';
+        radarOrb.textContent = activeSide === 'LONG' ? '🟢' : '🔴';
+        radarHeadline.textContent = `SIGNAL ACTIVE NOW — ${activeStratNames.join(' + ')}`;
+        radarSub.textContent = `Would trigger immediate ${activeSide} entry on Jupiter SOL-PERP if the 4H candle closed right now at $${m.C.toFixed(2)}.`;
+      } else if (anyWatch) {
+        currentOverallState = 'WATCH';
+        const watchNames = [];
+        if (m.f6.status.startsWith('WATCH')) watchNames.push('F6_07 Wyckoff');
+        if (m.f8.status.startsWith('WATCH')) watchNames.push('F8_05 Capitulation');
+
+        radarCard.className = 'lg:col-span-8 glass-card px-4 py-2.5 flex items-center justify-between gap-3 transition-all duration-300 border-2 border-amber-500/90 pulse-amber';
+        radarOrb.className = 'w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-xl font-bold bg-amber-500/25 border border-amber-400 text-amber-300';
+        radarOrb.textContent = '🟡';
+        radarHeadline.textContent = `PROXIMITY WATCH — Within ${watchPct.toFixed(1)}% of Trigger (${watchNames.join(' & ')})`;
+        radarSub.textContent = `Live price ($${m.C.toFixed(2)}) is within ${nearest.distPct.toFixed(2)}% of ${nearest.label} ($${nearest.price.toFixed(2)}). Trade notification approaching!`;
+      } else {
+        radarCard.className = 'lg:col-span-8 glass-card px-4 py-2.5 flex items-center justify-between gap-3 transition-all duration-300';
+        radarOrb.className = 'w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-xl font-bold bg-slate-800 border border-slate-600 text-slate-300';
+        radarOrb.textContent = '⚪';
+        radarHeadline.textContent = 'STANDBY — Monitoring 4H Close Boundaries';
+        radarSub.textContent = `Neither strategy would signal right now. Nearest trigger boundary is ${nearest.label} at $${nearest.price.toFixed(2)} (${nearest.distPct.toFixed(2)}% away).`;
+      }
+
+      if (currentOverallState !== state.lastAlertStatus) {
+        if (currentOverallState === 'ACTIVE') playAlertChime('active');
+        else if (currentOverallState === 'WATCH') playAlertChime('watch');
+        state.lastAlertStatus = currentOverallState;
+        updateCountdownClock();
+      }
+
+      // Jupiter 10x Ticket
+      const eq = Math.max(10, Number(document.getElementById('inputAccountEquity').value) || 1000);
+      state.accountEquity = eq;
+      try { localStorage.setItem('snowgate_equity', String(eq)); } catch (e) {}
+      const margin = eq * 0.10;
+      const notional = margin * 10.0;
+      const solQty = notional / m.C;
+      const estFeeUsd = notional * (16.12 / 10000.0);
+      const isShortTicket = m.f6.status === 'ACTIVE_SHORT' || m.f6.status === 'WATCH_SHORT';
+      const liqPrice = isShortTicket ? m.C * 1.095 : m.C * 0.905;
+
+      document.getElementById('ticketMargin').textContent = `$${margin.toFixed(2)}`;
+      document.getElementById('ticketNotional').textContent = `$${notional.toFixed(2)} (${solQty.toFixed(2)} SOL)`;
+      document.getElementById('ticketFees').textContent = `$${estFeeUsd.toFixed(2)} (16.12 bps)`;
+      document.getElementById('ticketLiqPrice').textContent = `$${liqPrice.toFixed(2)} (${isShortTicket ? 'Short' : 'Long'})`;
+
+      document.getElementById('chartFormingOhlc').textContent = `O: $${m.O.toFixed(2)} | H: $${m.H.toFixed(2)} | L: $${m.L.toFixed(2)} | C: $${m.C.toFixed(2)}`;
+      document.getElementById('chartRangeInfo').textContent = `Range: $${m.rng.toFixed(2)} | VolAvg: $${(m.volSma20 / 1e6).toFixed(0)}M`;
+
+      drawCandlestickChart(m);
+    }
+
+    function drawCandlestickChart(m) {
+      const canvas = document.getElementById('candleChartCanvas');
+      if (!canvas) return;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const wPx = Math.max(260, rect.width);
+      const hPx = Math.max(130, rect.height);
+      canvas.width = wPx * dpr;
+      canvas.height = hPx * dpr;
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, wPx, hPx);
+
+      const visible = state.candles.slice(-32);
+      const padLeft = 10, padRight = 54, padTop = 12, padBottom = 18;
+      const plotW = wPx - padLeft - padRight;
+      const plotH = hPx - padTop - padBottom;
+
+      let minP = Math.min(...visible.map(c => c.l), m.l20 * 0.992, m.exactSmaTriggerClose * 0.992);
+      let maxP = Math.max(...visible.map(c => c.h), m.h20 * 1.004, m.sma50 * 1.004);
+      const pSpan = Math.max(maxP - minP, 1.0);
+      minP -= pSpan * 0.05;
+      maxP += pSpan * 0.05;
+
+      const yOf = (p) => padTop + ((maxP - p) / (maxP - minP)) * plotH;
+
+      ctx.strokeStyle = 'rgba(51, 65, 85, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#64748b';
+      for (let i = 0; i <= 3; i++) {
+        const p = minP + ((maxP - minP) * i) / 3.0;
+        const y = yOf(p);
+        ctx.beginPath();
+        ctx.moveTo(padLeft, y);
+        ctx.lineTo(wPx - padRight, y);
+        ctx.stroke();
+        ctx.fillText(`$${p.toFixed(1)}`, wPx - padRight + 4, y + 3);
+      }
+
+      function drawLevelLine(price, color, label) {
+        if (price < minP || price > maxP) return;
+        const y = yOf(price);
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.2;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(padLeft, y);
+        ctx.lineTo(wPx - padRight, y);
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.font = 'bold 9px "JetBrains Mono", monospace';
+        ctx.fillText(`${label} $${price.toFixed(2)}`, padLeft + 4, Math.max(10, y - 3));
+        ctx.restore();
+      }
+
+      drawLevelLine(m.h20, '#fb7185', 'H20');
+      drawLevelLine(m.sma50, '#38bdf8', 'SMA50');
+      drawLevelLine(m.exactSmaTriggerClose, '#c084fc', '0.93×SMA');
+      drawLevelLine(m.l20, '#34d399', 'L20');
+
+      const stepX = plotW / visible.length;
+      const bodyW = Math.max(2.5, Math.min(9, stepX * 0.62));
+
+      visible.forEach((bar, idx) => {
+        const isLast = idx === visible.length - 1;
+        const o = isLast ? m.O : bar.o;
+        const h = isLast ? m.H : bar.h;
+        const l = isLast ? m.L : bar.l;
+        const c = isLast ? m.C : bar.c;
+
+        const cx = padLeft + (idx + 0.5) * stepX;
+        const bull = c >= o;
+        const color = isLast ? '#facc15' : (bull ? '#10b981' : '#f43f5e');
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = isLast ? 1.6 : 1.1;
+        ctx.beginPath();
+        ctx.moveTo(cx, yOf(h));
+        ctx.lineTo(cx, yOf(l));
+        ctx.stroke();
+
+        const topY = Math.min(yOf(o), yOf(c));
+        const bHeight = Math.max(2, Math.abs(yOf(c) - yOf(o)));
+        ctx.fillStyle = color;
+        ctx.fillRect(cx - bodyW / 2, topY, bodyW, bHeight);
+      });
+    }
+
+    function renderSignalsTable() {
+      const tbody = document.getElementById('signalsTableBody');
+      if (!tbody) return;
+      const filtered = RECENT_SIGNALS.filter(row => {
+        if (state.signalFilter === 'F6_07') return row.code === 'F6_07';
+        if (state.signalFilter === 'F8_05') return row.code === 'F8_05';
+        return true;
+      });
+
+      tbody.innerHTML = filtered.map(row => {
+        const sideHtml = row.direction === 'LONG'
+          ? '<span class="text-emerald-300 font-bold">L</span>'
+          : '<span class="text-rose-300 font-bold">S</span>';
+        const netColor = row.win ? 'text-emerald-400 font-bold' : 'text-rose-400';
+        const acctSign = row.acct_ret_pct >= 0 ? '+' : '';
+        return `
+          <tr class="hover:bg-slate-900/60">
+            <td class="py-1 px-1.5 text-slate-300">${row.timestamp.slice(5, 16)}</td>
+            <td class="py-1 px-1.5 text-sky-300">${row.code}</td>
+            <td class="py-1 px-1.5">${sideHtml}</td>
+            <td class="py-1 px-1.5 text-right text-white">$${row.entry_price.toFixed(2)}</td>
+            <td class="py-1 px-1.5 text-right text-slate-300">$${row.exit_price.toFixed(2)}</td>
+            <td class="py-1 px-1.5 text-right ${netColor}">${acctSign}${row.acct_ret_pct.toFixed(2)}%</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // 6. LIVE PUBLIC REST API FETCHERS
+    // =========================================================================
+    async function syncLiveMarketData(showNotification = false) {
+      const source = document.getElementById('dataSourceSelect').value;
+      const statusEl = document.getElementById('lastSyncStatus');
+      const dotEl = document.getElementById('feedDot');
+
+      if (source === 'embedded') {
+        state.candles = JSON.parse(JSON.stringify(BASELINE_CANDLES));
+        state.mode = 'live';
+        syncSlidersToCurrentBar();
+        renderDashboard();
+        if (statusEl) statusEl.textContent = 'Embedded 5Y Baseline';
+        if (showNotification) showToast('Loaded verified 5Y embedded SOL-PERP 4H candles.', 'info');
+        return;
+      }
+
+      let fetchedCandles = null;
+      let usedProvider = '';
+
+      if (source === 'auto' || source === 'kraken') {
+        try {
+          const resp = await fetch('https://api.kraken.com/0/public/OHLC?pair=SOLUSD&interval=240');
+          if (resp.ok) {
+            const data = await resp.json();
+            const pairKey = Object.keys(data.result || {}).find(k => k !== 'last');
+            if (pairKey && Array.isArray(data.result[pairKey]) && data.result[pairKey].length >= 55) {
+              fetchedCandles = data.result[pairKey].slice(-75).map(r => ({
+                t: new Date(Number(r[0]) * 1000).toISOString().slice(0, 19) + 'Z',
+                o: parseFloat(r[1]), h: parseFloat(r[2]), l: parseFloat(r[3]), c: parseFloat(r[4]),
+                v: parseFloat(r[6]) * parseFloat(r[4])
+              }));
+              usedProvider = 'Kraken 4H Live';
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (!fetchedCandles && (source === 'auto' || source === 'binance')) {
+        for (const url of [
+          'https://api.binance.com/api/v3/klines?symbol=SOLUSDT&interval=4h&limit=75',
+          'https://api.binance.us/api/v3/klines?symbol=SOLUSD&interval=4h&limit=75'
+        ]) {
+          try {
+            const resp = await fetch(url);
+            if (resp.ok) {
+              const raw = await resp.json();
+              if (Array.isArray(raw) && raw.length >= 55) {
+                fetchedCandles = raw.map(r => ({
+                  t: new Date(Number(r[0])).toISOString().slice(0, 19) + 'Z',
+                  o: parseFloat(r[1]), h: parseFloat(r[2]), l: parseFloat(r[3]), c: parseFloat(r[4]),
+                  v: parseFloat(r[7])
+                }));
+                usedProvider = 'Binance 4H Live';
+                break;
+              }
+            }
+          } catch (e) {}
+        }
+      }
+
+      let jupLivePrice = null;
+      if (source === 'auto' || source === 'coingecko') {
+        try {
+          const resp = await fetch('https://api.jup.ag/price/v2?ids=So11111111111111111111111111111111111111112');
+          if (resp.ok) {
+            const jdata = await resp.json();
+            const solMint = 'So11111111111111111111111111111111111111112';
+            if (jdata?.data?.[solMint]?.price) jupLivePrice = parseFloat(jdata.data[solMint].price);
+          }
+        } catch (e) {}
+      }
+
+      if (fetchedCandles) {
+        if (jupLivePrice && !isNaN(jupLivePrice)) {
+          const lastBar = fetchedCandles[fetchedCandles.length - 1];
+          lastBar.c = jupLivePrice;
+          lastBar.h = Math.max(lastBar.h, jupLivePrice);
+          lastBar.l = Math.min(lastBar.l, jupLivePrice);
+          usedProvider += ' + Jup';
+        }
+        state.candles = fetchedCandles;
+        state.mode = 'live';
+        if (dotEl) dotEl.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        if (statusEl) statusEl.textContent = `${usedProvider} (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`;
+        syncSlidersToCurrentBar();
+        renderDashboard();
+        if (showNotification) showToast(`Synced live 4H candles via ${usedProvider}.`, 'success');
+      } else {
+        if (state.mode === 'live') {
+          state.candles = JSON.parse(JSON.stringify(BASELINE_CANDLES));
+          syncSlidersToCurrentBar();
+          renderDashboard();
+        }
+        if (dotEl) dotEl.className = 'w-2 h-2 rounded-full bg-sky-400';
+        if (statusEl) statusEl.textContent = '5Y Baseline (Live on sol.snowgate.dev)';
+        if (showNotification) showToast('Using embedded 5Y dataset (external REST active when hosted on sol.snowgate.dev).', 'info');
+      }
+    }
+
+    // =========================================================================
+    // 7. SLIDERS, TABS & SCENARIO PRESETS
+    // =========================================================================
+    function switchDockTab(tabName) {
+      const panels = {
+        ticket: document.getElementById('panelTicket'),
+        sim: document.getElementById('panelSim'),
+        history: document.getElementById('panelHistory')
+      };
+      const btns = {
+        ticket: document.getElementById('tabBtnTicket'),
+        sim: document.getElementById('tabBtnSim'),
+        history: document.getElementById('tabBtnHistory')
+      };
+      Object.keys(panels).forEach(k => {
+        if (k === tabName) {
+          panels[k].classList.remove('hidden');
+          btns[k].className = 'px-2.5 py-1 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+        } else {
+          panels[k].classList.add('hidden');
+          btns[k].className = 'px-2.5 py-1 rounded text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700';
+        }
+      });
+    }
+
+    function syncSlidersToCurrentBar() {
+      const m = evaluateStrategies();
+      const sClose = document.getElementById('sliderClose');
+      const sLow = document.getElementById('sliderLow');
+      const sHigh = document.getElementById('sliderHigh');
+      const sVol = document.getElementById('sliderVolMult');
+
+      sClose.min = (m.l20 * 0.90).toFixed(2);
+      sClose.max = (m.h20 * 1.06).toFixed(2);
+      sClose.value = m.C.toFixed(2);
+
+      sLow.min = (m.l20 * 0.90).toFixed(2);
+      sLow.max = (m.h20 * 1.02).toFixed(2);
+      sLow.value = m.L.toFixed(2);
+
+      sHigh.min = (m.l20 * 0.95).toFixed(2);
+      sHigh.max = (m.h20 * 1.08).toFixed(2);
+      sHigh.value = m.H.toFixed(2);
+
+      sVol.value = Math.min(3.5, Math.max(0.1, m.volMult)).toFixed(2);
+      updateSliderValueLabels(m);
+    }
+
+    function updateSliderValueLabels(m) {
+      document.getElementById('valSliderClose').textContent = `$${m.C.toFixed(2)}`;
+      document.getElementById('valSliderLow').textContent = `$${m.L.toFixed(2)}`;
+      document.getElementById('valSliderHigh').textContent = `$${m.H.toFixed(2)}`;
+      document.getElementById('valSliderVolMult').textContent = `${m.volMult.toFixed(2)}× ($${(m.V / 1e6).toFixed(0)}M)`;
+    }
+
+    function applySliderInput() {
+      state.mode = 'simulated';
+      const last = state.candles[state.candles.length - 1];
+      const prior20 = state.candles.slice(state.candles.length - 21, state.candles.length - 1);
+      const volSma20 = prior20.reduce((a, x) => a + x.v, 0) / prior20.length;
+
+      let c = parseFloat(document.getElementById('sliderClose').value);
+      let l = parseFloat(document.getElementById('sliderLow').value);
+      let h = parseFloat(document.getElementById('sliderHigh').value);
+      const vMult = parseFloat(document.getElementById('sliderVolMult').value);
+
+      if (l > Math.min(last.o, c)) l = Math.min(last.o, c);
+      if (h < Math.max(last.o, c)) h = Math.max(last.o, c);
+
+      last.c = c;
+      last.l = l;
+      last.h = h;
+      last.v = vMult * volSma20;
+
+      const m = evaluateStrategies();
+      updateSliderValueLabels(m);
+      renderDashboard();
+    }
+
+    function applyPreset(presetName) {
+      state.candles = JSON.parse(JSON.stringify(BASELINE_CANDLES));
+      const last = state.candles[state.candles.length - 1];
+      const baseEval = evaluateStrategies();
+
+      if (presetName === 'LIVE') {
+        state.mode = 'live';
+        syncSlidersToCurrentBar();
+        renderDashboard();
+        showToast('Restored Live / Baseline 4H candle state.', 'info');
+        return;
+      }
+
+      state.mode = 'simulated';
+      if (presetName === 'F6_WATCH') {
+        last.c = Number((baseEval.l20 * 1.0055).toFixed(2));
+        last.l = Number((baseEval.l20 * 1.0020).toFixed(2));
+        last.h = Math.max(last.o, last.c) + 0.45;
+        showToast('Simulated: SOL price within 0.55% of 20-bar low floor (Watch Alert!).', 'warn');
+      } else if (presetName === 'F6_ACTIVE_LONG') {
+        last.l = Number((baseEval.l20 - 0.95).toFixed(2));
+        last.h = Number((baseEval.l20 + 1.85).toFixed(2));
+        last.o = Number((baseEval.l20 + 1.55).toFixed(2));
+        last.c = Number((baseEval.l20 + 1.35).toFixed(2));
+        showToast('Simulated: F6_07 Bullish Wyckoff Spring WOULD SIGNAL LONG NOW!', 'success');
+      } else if (presetName === 'F6_ACTIVE_SHORT') {
+        last.h = Number((baseEval.h20 + 1.25).toFixed(2));
+        last.l = Number((baseEval.h20 - 1.60).toFixed(2));
+        last.o = Number((baseEval.h20 - 0.95).toFixed(2));
+        last.c = Number((baseEval.h20 - 1.10).toFixed(2));
+        showToast('Simulated: F6_07 Bearish Wyckoff Upthrust WOULD SIGNAL SHORT NOW!', 'warn');
+      } else if (presetName === 'F8_WATCH') {
+        last.c = Number((baseEval.exactSmaTriggerClose * 1.005).toFixed(2));
+        last.l = Number((last.c - 0.85).toFixed(2));
+        last.v = baseEval.volSma20 * 1.85;
+        showToast('Simulated: SOL price within 0.5% of F8_05 Capitulation Zone (Watch Alert!).', 'warn');
+      } else if (presetName === 'F8_ACTIVE_LONG') {
+        const targetClose = Math.min(baseEval.exactSmaTriggerClose, baseEval.rsi32Price) - 0.65;
+        last.c = Number(targetClose.toFixed(2));
+        last.l = Number((targetClose - 1.65).toFixed(2));
+        last.h = Math.max(last.o, last.c + 0.50);
+        last.v = baseEval.volSma20 * 2.15;
+        showToast('Simulated: F8_05 STH-SOPR Capitulation Flush WOULD SIGNAL LONG NOW!', 'success');
+      }
+
+      syncSlidersToCurrentBar();
+      renderDashboard();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('watchThresholdSelect').value = String(state.watchThresholdPct);
+      document.getElementById('inputAccountEquity').value = String(state.accountEquity);
+
+      updateCountdownClock();
+      setInterval(updateCountdownClock, 1000);
+
+      syncSlidersToCurrentBar();
+      renderDashboard();
+      renderSignalsTable();
+
+      syncLiveMarketData(false);
+      setInterval(() => {
+        if (state.mode === 'live') syncLiveMarketData(false);
+      }, 20000);
+
+      window.addEventListener('resize', () => renderDashboard());
+
+      document.getElementById('btnRefreshFeed').addEventListener('click', () => syncLiveMarketData(true));
+      document.getElementById('dataSourceSelect').addEventListener('change', () => syncLiveMarketData(true));
+
+      document.getElementById('watchThresholdSelect').addEventListener('change', (e) => {
+        state.watchThresholdPct = parseFloat(e.target.value) || 1.0;
+        try { localStorage.setItem('snowgate_watch_pct', String(state.watchThresholdPct)); } catch (err) {}
+        renderDashboard();
+        showToast(`Watch proximity band set to ±${state.watchThresholdPct.toFixed(1)}%.`, 'info');
+      });
+
+      document.getElementById('btnAudioToggle').addEventListener('click', () => {
+        state.audioEnabled = !state.audioEnabled;
+        document.getElementById('audioIcon').textContent = state.audioEnabled ? '🔊' : '🔇';
+        document.getElementById('audioLabel').textContent = state.audioEnabled ? 'Audio Alerts On' : 'Audio Alerts Off';
+        if (state.audioEnabled) {
+          playAlertChime('watch', true);
+          showToast('Persistent Web Audio chimes enabled! Keep this tab open for 4H alerts.', 'success');
+        } else {
+          showToast('Audio alerts muted.', 'info');
+        }
+      });
+
+      document.getElementById('btnTestAudio').addEventListener('click', () => {
+        playAlertChime('active', true);
+        showToast('Played active signal chime test.', 'info');
+      });
+
+      // Dock Tabs
+      document.getElementById('tabBtnTicket').addEventListener('click', () => switchDockTab('ticket'));
+      document.getElementById('tabBtnSim').addEventListener('click', () => switchDockTab('sim'));
+      document.getElementById('tabBtnHistory').addEventListener('click', () => switchDockTab('history'));
+
+      // Presets
+      document.getElementById('presetLive').addEventListener('click', () => applyPreset('LIVE'));
+      document.getElementById('presetF6Watch').addEventListener('click', () => applyPreset('F6_WATCH'));
+      document.getElementById('presetF6ActiveLong').addEventListener('click', () => applyPreset('F6_ACTIVE_LONG'));
+      document.getElementById('presetF6ActiveShort').addEventListener('click', () => applyPreset('F6_ACTIVE_SHORT'));
+      document.getElementById('presetF8Watch').addEventListener('click', () => applyPreset('F8_WATCH'));
+      document.getElementById('presetF8ActiveLong').addEventListener('click', () => applyPreset('F8_ACTIVE_LONG'));
+      document.getElementById('btnResetSliders').addEventListener('click', () => applyPreset('LIVE'));
+
+      ['sliderClose', 'sliderLow', 'sliderHigh', 'sliderVolMult'].forEach(id => {
+        document.getElementById(id).addEventListener('input', applySliderInput);
+      });
+
+      document.getElementById('inputAccountEquity').addEventListener('input', () => renderDashboard());
+
+      document.getElementById('btnCopyTicket').addEventListener('click', () => {
+        const m = evaluateStrategies();
+        const eq = state.accountEquity;
+        const margin = (eq * 0.10).toFixed(2);
+        const notional = (eq * 1.0).toFixed(2);
+        const solQty = (eq / m.C).toFixed(3);
+        const ticketText = [
+          `=== JUPITER SOL-PERP 4H SIGNAL TICKET (sol.snowgate.dev) ===`,
+          `Timestamp: ${new Date().toISOString()}`,
+          `SOL-PERP Price: $${m.C.toFixed(2)}`,
+          `F6_07 Wyckoff Status: ${m.f6.status} (L20=$${m.l20.toFixed(2)}, H20=$${m.h20.toFixed(2)})`,
+          `F8_05 Capitulation Status: ${m.f8.status} (0.93*SMA50=$${m.exactSmaTriggerClose.toFixed(2)}, RSI14=${m.rsi14.toFixed(1)})`,
+          `Sizing: $${margin} Collateral (10% of $${eq}) @ 10x = $${notional} (${solQty} SOL)`,
+          `Hold Duration: 1 Candle (4 Hours from 4H UTC Close)`
+        ].join('\n');
+
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = ticketText;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+          showToast('Copied Jupiter 10x execution ticket to clipboard!', 'success');
+        } catch (err) {
+          showToast('Ticket ready in panel.', 'info');
+        }
+      });
+
+      const setFilterBtnStyle = (activeId) => {
+        ['filterAllSignals', 'filterF6Signals', 'filterF8Signals'].forEach(id => {
+          const btn = document.getElementById(id);
+          btn.className = id === activeId
+            ? 'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/40'
+            : 'px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700';
+        });
+      };
+
+      document.getElementById('filterAllSignals').addEventListener('click', () => {
+        state.signalFilter = 'ALL';
+        setFilterBtnStyle('filterAllSignals');
+        renderSignalsTable();
+      });
+      document.getElementById('filterF6Signals').addEventListener('click', () => {
+        state.signalFilter = 'F6_07';
+        setFilterBtnStyle('filterF6Signals');
+        renderSignalsTable();
+      });
+      document.getElementById('filterF8Signals').addEventListener('click', () => {
+        state.signalFilter = 'F8_05';
+        setFilterBtnStyle('filterF8Signals');
+        renderSignalsTable();
+      });
+    });
+  </script>
+</body>
+</html>
